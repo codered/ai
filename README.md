@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-1-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-2-brightgreen?style=flat-square" alt="Skills"></a>
 </p>
 
 <p align="center">
@@ -70,6 +70,19 @@ Works in two modes: full codebase scan during development, diff-first during PR 
 | **Languages** | C/C++, Python, Go, Rust, Java, JavaScript/TypeScript |
 | **Standards** | NASA Power of Ten · DOD JSF AV · SEI CERT · MISRA · OWASP |
 | **Gate** | P0/Critical blocks merge · 2+ approvals to override on teams |
+
+### 🤖 [Agent Team](skills/agent-team/)
+
+Assembles a five-role engineering team inside any repository — PM, Developer, QA, Security, and DevOps. Each agent has a distinct persona, scope, and responsibilities. They coordinate through a shared memory system and a rolling pipeline that keeps work moving without bottlenecks.
+
+The PM creates a phased plan with explicit gate criteria. The Dev agent implements using TDD and self-reviews with the NASA/DOD Code Review skill before handoff. QA and Security review each completed task while Dev moves forward. DevOps handles CI/CD, infra, and produces the final readiness gate before anything ships.
+
+| | |
+|---|---|
+| **Trigger** | `init agent team` · `agent team` · `agent team status` |
+| **Roles** | PM · Dev · QA · Security · DevOps |
+| **Pipeline** | Rolling — Dev never blocks waiting on review |
+| **Gate** | P0/P1 findings block task close · phase gates before advancing |
 
 ---
 
