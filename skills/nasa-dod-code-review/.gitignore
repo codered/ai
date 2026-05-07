@@ -1,0 +1,12 @@
+# Reports generated in target repos — not part of the skill itself
+reports/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
