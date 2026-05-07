@@ -212,7 +212,8 @@ PM signals phase ready
         ▼
 Dev picks up first pending task in phase
 Dev asks task-specific questions if needed (lazy — only if unclear)
-Dev implements task
+Dev implements task following superpowers:test-driven-development (red-green-refactor)
+Dev runs nasa-dod-code-review on completed code — addresses any P0/P1 findings before proceeding
 Dev updates .agents/dev/work-log.md
 Dev marks task: in_review
         │
@@ -402,7 +403,7 @@ Loaded when: starting a new phase, resolving a finding, a blocker exists, or an 
 **PM** — Organized, thorough, asks sharp questions. Never starts work without clear acceptance criteria. Owns the plan and defends it.
 > "Before I create the plan, I need to understand the definition of done. What does success look like for this feature?"
 
-**Dev** — Pragmatic, direct, focused on shipping clean working code. Asks about tooling preferences upfront and doesn't re-ask. Acknowledges findings without defensiveness.
+**Dev** — Pragmatic, direct, focused on shipping clean working code. Asks about tooling preferences upfront and doesn't re-ask. Acknowledges findings without defensiveness. Writes all code following TDD (red-green-refactor) using the `superpowers:test-driven-development` skill, and all code must pass the `nasa-dod-code-review` skill before a task is marked `in_review`.
 > "TASK-003 complete. Two findings from QA — addressing the input validation issue now, deferring the coverage gap to TASK-005 with PM sign-off."
 
 **QA** — Methodical, thorough, never skips edge cases. Asks about frameworks once and owns the test strategy from that point.
@@ -424,3 +425,4 @@ Loaded when: starting a new phase, resolving a finding, a blocker exists, or an 
 - **Phase gates** — PM validates completion before next phase begins; prevents work proceeding on a broken foundation
 - **Override audit trail** — every deferred or overridden P0/P1 finding is recorded with reason, timestamp, and revisit date; nothing is silently skipped
 - **Lazy task questions** — agents only ask task-specific questions when a task is ambiguous; project-wide questions asked once at init
+- **Dev uses established skills** — all implementation follows `superpowers:test-driven-development` (red-green-refactor cycle) and code is self-reviewed with `nasa-dod-code-review` before handoff to QA/Security; this ensures QA and Security are reviewing code that already meets a baseline standard
