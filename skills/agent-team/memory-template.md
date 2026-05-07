@@ -30,6 +30,8 @@ Status key: ✅ Complete · ⏳ In progress · — Not yet active
 
 ## Open Blockers
 [One line per active blocker. Write "None." if no blockers.]
+[PM writes here on gate failure. DevOps writes here on readiness blockers.]
+[Format: [agent] — [one-line blocker description]]
 
 ## Open Findings (P0/P1 only)
 [One line per unresolved critical or high finding. Write "None." if clear.]

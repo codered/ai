@@ -32,6 +32,11 @@ Read `TASK-NNN.md`. Confirm you understand:
 - The acceptance criteria
 - Any dependencies on other tasks (check their status first)
 
+**Before implementing, check for prior findings:**
+Read `memory/index.md` Open Findings. If any findings are listed for a task you previously submitted, address those first using the "Addressing Review Findings" process below before picking up anything new.
+
+Once clear to proceed, update `TASK-NNN.md` status to `in_progress` and update `memory/index.md` Dev agent status.
+
 ### 2. Write Tests First (TDD)
 
 Follow the `superpowers:test-driven-development` skill — red, green, refactor:
@@ -125,6 +130,13 @@ state this clearly to the user before recording the override.
 
 When all P0/P1 findings are resolved or overridden:
 - Update `TASK-NNN.md` status to `done`
+- Append a done entry to `.agents/dev/work-log.md`:
+  ```
+  ## TASK-NNN — [Title] — Done — [ISO date]
+  **Status:** done
+  **Findings resolved:** [List TASK-NNN/F-NNN items, or "None"]
+  **Findings deferred:** [List TASK-NNN/F-NNN items, or "None"]
+  ```
 - Update `memory/index.md` agent status and current focus
-- Update `memory/project-state.md` task summary row
+- Update `memory/project-state.md` task summary row and All Findings table (mark resolved/deferred)
 - Remove resolved findings from `memory/index.md` Open Findings

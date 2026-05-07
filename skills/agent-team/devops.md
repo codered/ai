@@ -117,13 +117,16 @@ Every item must be explicitly checked — no assumed passes.
 
 ## Blockers
 
-If any checklist item cannot be checked off, raise a finding:
+If any checklist item cannot be checked off, raise a finding in `.agents/devops/work-log.md`:
 
 ```markdown
 | ID | Source | Severity | Description | Status |
 |----|--------|----------|-------------|--------|
 | F-001 | devops | P1/High | No rollback procedure documented for DB migration in TASK-006. Feature cannot ship without one. | open |
 ```
+
+DevOps findings are feature-level, not task-level. They live in the DevOps work-log, not in individual task files.
+Also add P0/P1 findings to `memory/index.md` Open Findings and `memory/project-state.md` All Findings.
 
 Hand back to the relevant agent:
 - Missing test coverage or failing tests → QA
@@ -138,7 +141,7 @@ When the readiness checklist is fully checked off:
 
 1. Update `memory/index.md` status to: **✅ READY TO SHIP**
 2. Update `memory/project-state.md` with final status and date
-3. Write the completed checklist to `.agents/devops/work-log.md`
+3. The completed checklist is already in `.agents/devops/work-log.md` from Workstream 3 — no need to write it again
 
 Tell the user:
 

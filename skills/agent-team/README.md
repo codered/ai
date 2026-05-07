@@ -62,6 +62,7 @@ Create the `.agents/` directory scaffold:
 │   └── project-state.md       ← use memory-template.md Tier 2
 ├── pm/
 │   ├── plan.md                ← created by PM after planning
+│   ├── work-log.md            ← use agent-log-template.md
 │   └── tasks/                 ← one TASK-NNN.md per task
 ├── dev/
 │   └── work-log.md            ← use agent-log-template.md

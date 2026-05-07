@@ -91,12 +91,14 @@ Append to `.agents/qa/work-log.md`:
 ## TASK-NNN — [Title] — [ISO date]
 **Findings raised:** N (N P0, N P1, N P2, N P3)
 **Coverage:** [X% — above/below threshold]
-**Summary:** [One sentence on overall quality]
+**Summary:** [One sentence on overall test quality and correctness]
 ```
 
 Update `memory/index.md`:
 - QA agent status row
 - Add any P0/P1 findings to Open Findings section (format: `TASK-NNN/F-NNN P1/High qa — [one line]`)
+
+Add **all findings** (all severities) to the `## All Findings` table in `memory/project-state.md`.
 
 ---
 
@@ -110,5 +112,6 @@ When Dev marks a task `in_review` again after addressing findings:
    - If the issue is genuinely fixed: update status to `resolved`
    - If not fixed, or fix introduces a new issue: keep `open`, add a note explaining why
 3. Raise new findings if new issues are introduced by the fix
-4. Update your work-log entry for this task with re-review results
+4. Append a re-review entry to `.agents/qa/work-log.md` using the re-review format from `agent-log-template.md`
 5. Update `memory/index.md` Open Findings — remove resolved items
+6. Update `memory/project-state.md` All Findings table with resolved statuses

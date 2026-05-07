@@ -125,6 +125,6 @@ When all tasks in a phase are marked `done`, validate the gate:
 **Append to `.agents/pm/work-log.md` after every action:**
 ```
 ## [Event] — [ISO date]
-**Event:** [Plan created / Phase N gate passed / Phase N gate failed]
+**Event:** [Plan created / Phase N — [name] gate passed / Phase N — [name] gate failed]
 **Detail:** [What was decided or validated]
 ```

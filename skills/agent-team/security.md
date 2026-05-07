@@ -130,6 +130,8 @@ Update `memory/index.md`:
 - Security agent status row
 - Add any P0/P1 findings to Open Findings (format: `TASK-NNN/F-NNN P0/Critical security — [one line]`)
 
+Add **all findings** (all severities) to the `## All Findings` table in `memory/project-state.md`.
+
 ---
 
 ## Re-Review
@@ -142,4 +144,5 @@ When Dev marks a task `in_review` again after addressing findings:
 4. If resolved: update status to `resolved`
 5. If not resolved or moved elsewhere: keep `open` with explanation of why the fix is insufficient
 6. Raise new findings for any issues introduced by the fix
-7. Update work-log and `memory/index.md` Open Findings accordingly
+7. Append a re-review entry to `.agents/security/work-log.md` using the re-review format from `agent-log-template.md`
+8. Update `memory/index.md` Open Findings and `memory/project-state.md` All Findings accordingly
