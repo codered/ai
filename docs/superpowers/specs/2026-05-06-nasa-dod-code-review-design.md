@@ -6,30 +6,68 @@
 
 ## Overview
 
-A Crush skill that reviews code against NASA and DOD best practices, categorizes findings by severity (P0–P3), enforces PR gate logic, manages CODEOWNERS, and outputs findings to both terminal and a saved report file. Used during active development and PR review.
+A standalone, agent-agnostic skill that reviews code against NASA and DOD best practices. Installable by anyone into any AI coding assistant (Claude, Copilot, Cursor, Gemini, etc.) that can read markdown context files. Categorizes findings by severity (P0–P3), enforces PR gate logic, manages CODEOWNERS, and outputs findings to both terminal and a saved report file. Used during active development and PR review.
+
+---
+
+## Distribution
+
+Published as a standalone GitHub repository. Users install it one of two ways:
+
+**Global install** (works across all repos):
+```bash
+git clone https://github.com/<org>/nasa-dod-code-review ~/.agent-skills/nasa-dod-code-review
+```
+
+**Per-repo install** (lives alongside the code):
+```bash
+git clone https://github.com/<org>/nasa-dod-code-review .agent-skills/nasa-dod-code-review
+```
+
+Users then reference the skill in their agent's context/instructions file (e.g., `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `copilot-instructions.md`):
+```
+When asked to review code, load and follow .agent-skills/nasa-dod-code-review/README.md
+```
 
 ---
 
 ## File Structure
 
 ```
-skills/nasa-dod-code-review/
-├── SKILL.md                  # Orchestrator — the flow the agent follows
+nasa-dod-code-review/
+├── README.md                 # Entry point — full skill instructions the agent follows
 ├── standards-sources.md      # Authoritative URLs for NASA/DOD/language standards
-├── reviewer-prompt.md        # Sub-agent prompt that performs actual code analysis
+├── reviewer-prompt.md        # Focused analysis prompt for the code review pass
 ├── severity-guide.md         # P0–P3 definitions with concrete examples per level
 ├── codeowners-template.md    # CODEOWNERS setup instructions + template
 └── report-template.md        # Findings report structure (file output)
 ```
 
-Installed at: `/home/harsh/.local/share/superpowers/skills/nasa-dod-code-review/`
+`README.md` is the orchestrator. It defines the full flow, references companion files by name, and is the only file an agent needs to load first — companion files are pulled in as needed during execution.
+
+---
+
+## Activation
+
+### Trigger Phrases
+The skill README documents these canonical trigger phrases that any user can say:
+- `"nasa-dod review"` — runs in the appropriate mode (dev or PR) based on context
+- `"nasa-dod dev review"` — explicitly forces full codebase scan
+- `"nasa-dod pr review"` — explicitly forces PR/diff mode
+
+### Agent Setup
+Users add one line to their agent's context file:
+```
+When you see "nasa-dod review", load and follow .agent-skills/nasa-dod-code-review/README.md
+```
+The README explains the trigger phrases, both installation paths, and what the agent should do when activated.
 
 ---
 
 ## Skill Flow
 
 ```
-Invoked (dev mode or PR mode)
+Trigger phrase received
         │
         ▼
 .github/CODEOWNERS exists?
@@ -39,7 +77,7 @@ Invoked (dev mode or PR mode)
 Detect: language(s), solo/team (from config), PR vs dev context
         │
         ▼
-Fetch authoritative standards (NASA, DOD, language-specific) — cache in session
+Load standards-sources.md → fetch authoritative standards — cache in session
         │
         ▼
 PR mode?
@@ -49,6 +87,7 @@ PR mode?
   No (dev mode) ──► Analyze full codebase
         │
         ▼
+Load reviewer-prompt.md → perform analysis pass
 Generate findings (P0/Critical → P3/Advisory)
 Tag approvers on P0 and P1 findings (via GitHub PR comment: @username)
         │
@@ -61,6 +100,7 @@ P0 found?
         ▼
 Output findings to terminal
 Write reports/code-review-YYYY-MM-DD.md to repo
+Update last_full_scan in .github/nasa-dod-review-config.json (full scans only)
 ```
 
 ---
@@ -81,7 +121,7 @@ Full definitions and examples per level live in `severity-guide.md`.
 ## Findings Report Structure
 
 ### Report File
-Saved to: `reports/code-review-YYYY-MM-DD.md`
+Saved to: `reports/code-review-YYYY-MM-DD.md` inside the repo being reviewed.
 Also output in full to terminal/chat.
 
 ### Report Sections
@@ -148,7 +188,7 @@ void process_recursive(int depth) {
 ---
 ```
 
-The reviewer sub-agent always generates language-matched code for all three fix options based on the detected repo language.
+The agent always generates language-matched code for all three fix options based on the detected repo language.
 
 ---
 
@@ -181,11 +221,12 @@ Triggered when `.github/CODEOWNERS` does not exist.
   "solo_dev": false,
   "approvers": ["approver1", "approver2"],
   "last_full_scan": null,
-  "target_branch": "main"
+  "target_branch": "main",
+  "full_scan_max_age_days": 7
 }
 ```
 
-`last_full_scan` is updated after every full scan and used to decide whether to prompt a full scan before PR review. Default staleness threshold: **7 days**. Configurable via `"full_scan_max_age_days"` in the config file.
+`last_full_scan` is updated after every full scan and compared against `full_scan_max_age_days` (default: 7) to decide whether to prompt a new full scan before PR review.
 
 ---
 
@@ -256,15 +297,18 @@ exhaust the heap. This is non-negotiable in safety-critical code.
 
 | Context | Trigger | Behavior |
 |---------|---------|----------|
-| Development | Manual invocation during coding | Full codebase scan |
-| PR Review | Invoked on open/update PR | Diff-first; prompt full scan if stale |
+| Development | `"nasa-dod review"` or `"nasa-dod dev review"` | Full codebase scan |
+| PR Review | `"nasa-dod review"` or `"nasa-dod pr review"` | Diff-first; prompt full scan if stale |
 
 ---
 
 ## Key Design Decisions
 
-- **Modular structure** mirrors existing skills (`systematic-debugging`, `requesting-code-review`)
-- **Session-cached standards** avoids redundant fetches within a single review session
+- **Agent-agnostic** — plain markdown files; works with any LLM-based coding assistant that can read context files
+- **Dual install paths** — global (`~/.agent-skills/`) or per-repo (`.agent-skills/`) depending on user preference
+- **README.md as entry point** — standard convention any agent/developer recognizes; no tool-specific loading mechanism required
+- **Canonical trigger phrases** — documented in README so users know exactly what to say regardless of which agent they use
+- **Modular companion files** — standards, reviewer prompt, severity guide, templates each have one clear purpose and can be updated independently
 - **Config file** (`.github/nasa-dod-review-config.json`) is the source of truth for solo/team mode, approvers, and scan history
 - **GitHub-first** — CODEOWNERS follows GitHub conventions (`.github/CODEOWNERS`)
 - **Three fix options with code** — every finding gives the developer actionable, language-correct choices with trade-off transparency
