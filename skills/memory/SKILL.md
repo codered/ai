@@ -5,7 +5,7 @@ description: >
   memory store for a project or directory — split into short-term (active and
   frequently-needed information) and long-term (full project detail) tiers, backed
   by JSON indexes for quick "do we already know this, and where?" checks. Triggers
-  include "build memory", "update memory", "memory status", "remember this project",
+  include "build memory", "update memory", "remember this project",
   and self-offered check-ins when you estimate your own context usage is approaching
   roughly 25%. Always delegates the actual file reads/writes/categorization to a
   sub-agent so the main conversation's context stays clean.
@@ -34,8 +34,7 @@ never requires opening and reading entry files one by one.
 Two paths into this skill:
 
 **Explicit invocation, anytime** — the user directly asks for it: "build memory for
-this project," "update memory," "memory status," "remember what we just figured
-out," or similar. Run it immediately, regardless of how full your context currently
+this project," "update memory," "remember what we just figured out," or similar. Run it immediately, regardless of how full your context currently
 is. By default it targets the current project's root directory; if the user names a
 different directory, target that one instead.
 
@@ -75,6 +74,12 @@ Give the sub-agent:
 - Your **scratch-list**
 - The **trigger reason** — `"user-requested"` or `"context-threshold"`
 
+The two modes use that trigger reason differently — seed mode treats it as purely
+informational (a first-time build proceeds the same way regardless of why it was
+triggered), while maintain mode uses it as context for prioritizing its bounded
+re-evaluation pass. You don't need to do anything differently based on which one
+it is; just pass it along accurately.
+
 Tell the sub-agent to first check whether `memory/` already exists in the target
 directory:
 - **If it doesn't exist**, it should follow the full instructions in
@@ -93,6 +98,13 @@ new facts, promoted 1 entry long→short, memory/ now has 19 short / 43 long
 entries"). Pass that line along to the user. Do not read the files the sub-agent
 wrote, do not summarize its internal reasoning — you don't have it, and you don't
 need it. The receipt is the interface.
+
+If the sub-agent doesn't come back with a clean one-line receipt — it errors out,
+stalls, or returns something that isn't a short status line — don't try to inspect
+or repair `memory/` yourself from the main context; you can't do that safely
+without undermining the whole point of delegating. Just tell the user the memory
+update may not have completed cleanly, and that re-running the skill is the right
+next step.
 
 ---
 
