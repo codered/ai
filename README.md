@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-4-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-5-brightgreen?style=flat-square" alt="Skills"></a>
 </p>
 
 <p align="center">
@@ -109,6 +109,19 @@ Works in five phases: orientation, ambiguity resolution, module-by-module analys
 | **Output** | `spec/` directory — `00_overview.md` through `NN_cross_cutting.md` |
 | **Scale** | Designed for 100+ file codebases; works at any size |
 | **Gate** | Reimplementation completeness checklist before delivery |
+
+### 🗣️ [Devil's Advocate](skills/devils-advocate/)
+
+Challenges a request, design, plan, or position by actively hunting for logical gaps, hidden assumptions, missed edge cases, and unconsidered counter-framings — in a tone that's friendly yet firm. Doubles as a general-purpose debate partner for any topic, technical or not.
+
+Triages every exchange as low-stakes or high-stakes first, and that single call drives everything downstream: how many rounds of pushback it runs, how direct its tone gets, and whether it replies in structured findings or natural conversation. It's advisory only — it never blocks anything, and it never re-raises a concern you've already closed.
+
+| | |
+|---|---|
+| **Trigger** | "play devil's advocate" · "poke holes in this" · "challenge my thinking" · "steelman the other side" · any general debate request |
+| **Categories** | Logical/reasoning gaps · hidden assumptions · missed edge cases · counter-framings |
+| **Pushback** | 1 mention (low-stakes) · up to 3 rounds (high-stakes), then defers either way |
+| **Output** | Conversational prose (low-stakes/debate) · structured findings list (high-stakes/design review) |
 
 
 ---
