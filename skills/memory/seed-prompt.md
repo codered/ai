@@ -43,9 +43,17 @@ For each distinct fact, decision, convention, or in-progress thread you've ident
 
 Each entry file is plain prose — write it the way you'd explain the fact to a
 teammate who's never seen this project. No fixed template is required; clarity
-matters more than structure. Keep `id` values lowercase-hyphenated and unique
-within the whole store (a short entry and its long companion may share a *topic*
-but must have different `id`s, e.g. `readme-pr3-status` and `readme-pr3-context`).
+matters more than structure.
+
+Some facts need both: a full write-up in `long/` plus a short pointer entry in
+`short/` that links to it (and vice versa — `index-schema.md` expects the link
+to be reciprocal). Follow `categorization-rules.md`'s filing procedure to decide
+whether a given fact needs one entry or a linked pair, and set each entry's
+`pointer` field accordingly.
+
+Keep `id` values lowercase-hyphenated and unique within the whole store (a short
+entry and its long companion may share a *topic* but must have different `id`s,
+e.g. `ci-pipeline-status` and `ci-pipeline-history`).
 
 ## Step 3 — Build the index files
 
@@ -65,7 +73,8 @@ Before finishing, walk through the four consistency rules at the bottom of
 ## Step 4 — Report back
 
 Return exactly one line to the dispatching agent — no more. State how many entries
-you created in each tier and how many tags you indexed. For example:
+you created in each tier and how many distinct tags now appear in `index.json`'s
+`tags` map. For example:
 
 > Seeded memory/ — 14 short entries, 31 long entries, 22 tags indexed.
 
