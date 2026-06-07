@@ -34,9 +34,10 @@ never requires opening and reading entry files one by one.
 Two paths into this skill:
 
 **Explicit invocation, anytime** — the user directly asks for it: "build memory for
-this project," "update memory," "remember what we just figured out," or similar. Run it immediately, regardless of how full your context currently
-is. By default it targets the current project's root directory; if the user names a
-different directory, target that one instead.
+this project," "update memory," "remember what we just figured out," or similar. Run
+it immediately, regardless of how full your context currently is. By default it
+targets the current project's root directory; if the user names a different
+directory, target that one instead.
 
 **Self-offered check-in at ~25% context** — periodically gut-check your own context
 usage: have you read a lot of large files, had a long back-and-forth, worked through
