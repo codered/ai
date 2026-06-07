@@ -31,15 +31,21 @@ How often has this been looked up across recent sessions?
   up — e.g. "this repo's tests require `VHS_NO_SANDBOX=true`" is a stable fact, but
   if it's been referenced repeatedly, cheap access matters more than its age.
 - Use the `access_count` field (see `index-schema.md`) as the concrete signal: an
-  entry with a rising `access_count` over multiple maintenance passes is a
-  candidate for promotion to short, even if it would otherwise sit in long.
+  entry whose `access_count` stands out as notably higher than other entries of
+  similar age and topic is a candidate for promotion to short, even if it would
+  otherwise sit in long — frequent lookups are exactly what short-tier is
+  optimized for. Compare it against peers in the same `_index.json`, not against
+  its own value from a prior pass (the field is cumulative and only ever
+  increases, so "has it gone up" is true of nearly everything — "is it unusually
+  high relative to similar entries" is the question that actually distinguishes a
+  frequently-needed fact).
 
 ### 3. Scope / granularity
 
 How much detail does this actually need to carry where it lives?
 
 - **Short-tier entries are pointers and summaries** — sized for a quick scan.
-  Example: `"PR #3 open, awaiting review — full history in long/readme-pr3-context.md"`.
+  Example: `"PR #3 open, awaiting review — full history in long/db-migration-plan.md"`.
 - **Long-tier entries are the complete version** — full context, rationale, and
   history. Anything that would take more than a few sentences to convey belongs
   here, with a short pointer left behind in the other tier if it's still relevant
@@ -67,14 +73,16 @@ During every maintenance pass, re-evaluate a bounded sample of existing entries
 (see `maintain-prompt.md` for the sample size and selection rule) against the
 three signals above:
 
-- **Promote long → short** when `access_count` has risen noticeably since the
-  last pass, or when the entry's subject has become part of currently active work.
-  Write (or update) a short pointer entry; keep the long entry as the full version.
-- **Demote short → long** when an entry's subject has gone quiet — no access in
-  several passes, and the work it described reads as resolved or shelved. Move
-  the full content to `long/` (creating an entry there if one doesn't already
-  exist), note its resolution/closure in the text (e.g. "Resolved 2026-06-10 —
-  merged in PR #4"), and remove the short-tier entry plus its tag references.
+- **Promote long → short** when its `access_count` is unusually high relative to
+  similar long-tier entries (the same relative comparison from signal 2 above), or
+  when the entry's subject has become part of currently active work. Write (or
+  update) a short pointer entry; keep the long entry as the full version.
+- **Demote short → long** when an entry's subject has gone quiet — `last_accessed`
+  is noticeably stale compared to other active short-tier entries, and the work it
+  described reads as resolved or shelved. Move the full content to `long/`
+  (creating an entry there if one doesn't already exist), note its
+  resolution/closure in the text (e.g. "Resolved 2026-06-10 — merged in PR #4"),
+  and remove the short-tier entry plus its tag references.
 - Leave everything else exactly as it is — re-filing should touch the smallest
   possible set of entries and index records on each pass, so JSON diffs stay small
   and reviewable in git.
