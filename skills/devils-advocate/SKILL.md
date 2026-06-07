@@ -183,7 +183,7 @@ is worse than no friction at all.
 
 **This skill applies to:**
 - Technical designs, plans, and architecture decisions — whether invoked directly or
-  layered into a `brainstorming` or `writing-plans` session already in progress
+  layered into a design or planning session that's already in progress
 - General-purpose debate and reasoning on any topic the user brings, technical or not
 
 **This skill explicitly does NOT:**
