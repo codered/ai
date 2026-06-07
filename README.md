@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-6-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-7-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -160,6 +160,19 @@ Triages every exchange as low-stakes or high-stakes first, and that single call 
 | **Categories** | Logical/reasoning gaps · hidden assumptions · missed edge cases · counter-framings |
 | **Pushback** | 1 mention (low-stakes) · up to 3 rounds (high-stakes), then defers either way |
 | **Output** | Conversational prose (low-stakes/debate) · structured findings list (high-stakes/design review) |
+
+### 🧠 [Memory](skills/memory/)
+
+Builds and maintains a persistent, file-based memory store for a project — split into short-term (active, frequently-needed) and long-term (full project detail) tiers, backed by JSON indexes so any agent can quickly tell whether it already knows something and exactly where to look if it doesn't.
+
+Always delegates the actual reading, categorizing, and writing to a sub-agent, so the main conversation's context stays clean. Can be triggered anytime, and offers itself when the agent estimates its own context is filling up — checkpointing what's been learned before it risks being lost.
+
+| | |
+|---|---|
+| **Trigger** | "build memory" · "update memory" · self-offered at ~25% context |
+| **Tiers** | `short/` — active & frequent · `long/` — full project detail |
+| **Lookup** | JSON indexes (top-level tag manifest + per-tier detail) for fast "do we know this?" checks |
+| **Always** | Delegates to a sub-agent — never reads/writes memory files in the main context |
 
 ---
 
