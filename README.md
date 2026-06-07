@@ -167,6 +167,10 @@ Builds and maintains a persistent, file-based memory store for a project — spl
 
 Always delegates the actual reading, categorizing, and writing to a sub-agent, so the main conversation's context stays clean. Can be triggered anytime, and offers itself when the agent estimates its own context is filling up — checkpointing what's been learned before it risks being lost.
 
+<p align="center">
+  <img src="assets/demo/memory/demo.gif" alt="The Memory skill assembling a scratch-list of session learnings, dispatching a sub-agent that surveys the repo and files facts into short- and long-term tiers, then relaying a one-line status receipt" width="700">
+</p>
+
 | | |
 |---|---|
 | **Trigger** | "build memory" · "update memory" · self-offered at ~25% context |
