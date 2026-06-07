@@ -1,5 +1,5 @@
 # VHS tape for the README demo GIF.
-# Regenerate with: vhs demo.tape   (run from inside assets/demo/)
+# Regenerate with: vhs demo.tape   (run from inside assets/demo/code-analyst/)
 # Requires: https://github.com/charmbracelet/vhs (and ffmpeg + ttyd)
 
 Output demo.gif
@@ -13,11 +13,12 @@ Set Theme "Dracula"
 Set TypingSpeed 60ms
 
 Hide
-Type "export PATH=$PWD:$PATH && clear"
+Type "clear && bash repl.sh"
 Enter
+Sleep 500ms
 Show
 
-Type "nasa-dod review"
+Type "analyze poll_sensor.py"
 Sleep 600ms
 Enter
 
