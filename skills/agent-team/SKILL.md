@@ -1,3 +1,16 @@
+---
+name: agent-team
+description: >
+  Use this skill when the user wants to assemble a multi-role engineering team
+  inside a repository to plan and execute a feature or project. Triggers include
+  "init agent team", "agent team", and "agent team status". Assembles five
+  persona-driven roles — PM, Developer, QA, Security, and DevOps — that
+  coordinate through shared memory and a rolling pipeline: PM plans in phases
+  with explicit gate criteria, Dev implements with TDD and self-reviews via the
+  nasa-dod-code-review skill, QA and Security review completed work without
+  blocking Dev's progress, and DevOps produces the final readiness gate.
+---
+
 # Agent Team
 
 A standalone, agent-agnostic skill that assembles a five-role engineering team
