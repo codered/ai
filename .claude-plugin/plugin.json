@@ -1,0 +1,20 @@
+{
+  "name": "codered",
+  "description": "Give your AI coding agent institutional knowledge — skills for code review, planning, analysis, and team workflows",
+  "version": "1.0.0",
+  "author": {
+    "name": "Harsh Singh"
+  },
+  "homepage": "https://github.com/codered/ai",
+  "repository": "https://github.com/codered/ai",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "code-review",
+    "nasa-dod",
+    "agent-team",
+    "memory",
+    "best-practices",
+    "workflows"
+  ]
+}

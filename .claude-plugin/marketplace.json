@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "codered",
+  "description": "CodeRed AI Skills — institutional knowledge for AI coding agents",
+  "owner": {
+    "name": "Harsh Singh"
+  },
+  "plugins": [
+    {
+      "name": "codered",
+      "description": "Give your AI coding agent institutional knowledge — skills for code review, planning, analysis, and team workflows",
+      "version": "1.0.0",
+      "source": "./",
+      "author": {
+        "name": "Harsh Singh"
+      }
+    }
+  ]
+}

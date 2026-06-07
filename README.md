@@ -27,11 +27,30 @@ Every new chat with your AI coding agent starts from zero. It doesn't know your 
 **Skills fix that.** A skill is a focused set of markdown instructions that encodes a specific way of working — a review process, a planning workflow, an analysis format — once, precisely, so any agent that can read a file can run it the same way every time.
 
 > [!NOTE]
-> If your agent can read a file, it can use these skills. No plugins, no frameworks, no SDK.
+> If your agent can read a file, it can use these skills. No frameworks, no SDK — and if you're on Claude Code, this repo doubles as a plugin marketplace for one-command installs.
 
 ---
 
 ## 🚀 Quickstart
+
+### Claude Code (fastest)
+
+This repo is also a Claude Code plugin marketplace, so you can install it directly — no cloning, no context-file edits. Skills then show up namespaced as `codered:<skill-name>` (e.g. `codered:nasa-dod-code-review`), exactly like `superpowers:brainstorming`.
+
+```bash
+/plugin marketplace add codered/ai
+/plugin install codered@codered
+```
+
+Then just ask for what you need:
+
+```
+nasa-dod review
+```
+
+Claude Code resolves that to `codered:nasa-dod-code-review` and loads the skill automatically.
+
+### Any other agent
 
 **1. Clone the repo**
 
@@ -184,8 +203,34 @@ Always delegates the actual reading, categorizing, and writing to a sub-agent, s
 
 ### Claude Code
 
+<details open>
+<summary><strong>Plugin install (recommended)</strong></summary>
+
+This repo ships its own `.claude-plugin/marketplace.json`, so Claude Code can install it directly as a plugin — no cloning, no `CLAUDE.md` edits. Skills are namespaced as `codered:<skill-name>` (e.g. `codered:nasa-dod-code-review`, `codered:memory`), the same way plugins like `superpowers` show up.
+
+Run both commands inside Claude Code:
+
+```bash
+/plugin marketplace add codered/ai
+/plugin install codered@codered
+```
+
+Verify it's loaded:
+
+```bash
+/plugin list
+```
+
+To update later:
+
+```bash
+/plugin marketplace update codered
+```
+
+</details>
+
 <details>
-<summary><strong>Global install</strong></summary>
+<summary><strong>Manual install (global)</strong></summary>
 
 ```bash
 git clone https://github.com/codered/ai ~/.codered
@@ -201,7 +246,7 @@ load and follow the SKILL.md in the relevant skill folder.
 </details>
 
 <details>
-<summary><strong>Per-project install</strong></summary>
+<summary><strong>Manual install (per-project)</strong></summary>
 
 ```bash
 git clone https://github.com/codered/ai .codered
@@ -308,6 +353,9 @@ skills/
 ```
 
 Skills are plain markdown. They work because agents are good at following clear written instructions — and plain text is easy to read, version, improve, and contribute to.
+
+> [!TIP]
+> On Claude Code, installing this repo as a plugin (see [Installation](#-installation)) namespaces every skill under `codered:` — `codered:nasa-dod-code-review`, `codered:memory`, and so on — so they're unambiguous alongside skills from other plugins like `superpowers:brainstorming`. You can still trigger them by their natural-language phrases (`nasa-dod review`, `build memory`); Claude Code resolves those to the namespaced skill automatically. The manual clone install doesn't apply a namespace — skills are simply loaded by their plain folder name.
 
 ---
 
