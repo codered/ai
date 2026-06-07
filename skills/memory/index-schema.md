@@ -34,8 +34,16 @@ anything about X, and which tier(s) is it in?" without opening any entry file.
       "long": ["auth-architecture", "auth-history"]
     },
     "demo-pipeline": {
-      "short": [],
+      "short": ["readme-pr3-status"],
       "long": ["vhs-setup", "demo-asset-conventions"]
+    },
+    "readme": {
+      "short": ["readme-pr3-status"],
+      "long": ["readme-restructure-rationale"]
+    },
+    "pr": {
+      "short": ["readme-pr3-status"],
+      "long": []
     }
   }
 }
@@ -50,7 +58,9 @@ top-level `tags` map has pointed it at a specific tier.
 
 ### Fields (per entry record)
 
-- `id` (string) — unique identifier, lowercase-hyphenated, matches the filename stem
+- `id` (string) — unique identifier within its tier, lowercase-hyphenated, matches the
+  filename stem. The same conceptual fact split across both tiers (a short-tier pointer
+  and its long-tier companion) uses two distinct `id`s, linked via `pointer`.
 - `file` (string) — filename of the entry, relative to this index's folder (e.g. `"readme-pr3-status.md"`)
 - `tags` (array of strings) — every tag this entry should be reachable under;
   each one MUST also appear in the top-level `index.json` `tags` map pointing to this `id`
@@ -60,7 +70,10 @@ top-level `tags` map has pointed it at a specific tier.
   starts at `1` when an entry is created
 - `pointer` (string, optional) — relative path from `memory/` to a companion entry in
   the *other* tier (e.g. `"long/readme-restructure-rationale.md"`). Omit this field
-  entirely when no companion entry exists — do not write it as `null` or `""`.
+  entirely when no companion entry exists — do not write it as `null` or `""`. When
+  both a short-tier pointer entry and its long-tier companion exist, the companion
+  should carry a reciprocal `pointer` back, so the relationship can be navigated
+  from either direction.
 
 ### Example
 
