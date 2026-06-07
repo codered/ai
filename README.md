@@ -1,28 +1,33 @@
 <p align="center">
   <h1 align="center">⚡ CodeRed AI Skills</h1>
-  <p align="center">Battle-tested skills for AI coding agents. Drop them in. They just work.</p>
+  <p align="center"><b>Give your AI coding agent institutional knowledge — in five minutes, with zero config.</b></p>
 </p>
 
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-5-brightgreen?style=flat-square" alt="Skills"></a>
-</p>
-
-<p align="center">
-  <b>Works with Claude Code · Cursor · GitHub Copilot · Gemini CLI · Any agent that reads markdown</b>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-6-brightgreen?style=flat-square" alt="Skills"></a>
+  <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
 ---
 
-## What is this?
+<p align="center">
+  <img src="assets/demo/demo.gif" alt="The NASA/DOD Code Review skill catching an unbounded loop, citing the violated rule, offering three fix options, and blocking the merge" width="800">
+  <br>
+  <sub>The <a href="skills/nasa-dod-code-review/">NASA/DOD Code Review</a> skill catching a real Power-of-Ten violation — rule citation, fix options, and merge gate, all in one pass. (<a href="assets/demo/demo.tape">regenerate with VHS</a>)</sub>
+</p>
 
-A growing library of skills for AI coding agents. Each skill is a focused set of markdown instructions — no plugins, no frameworks, no configuration required. Point your agent at the folder and it knows what to do.
+---
 
-Skills are designed to be precise, opinionated, and immediately useful. They encode hard-won knowledge — engineering standards, team workflows, review processes — in a format any agent can act on.
+## Why this exists
+
+Every new chat with your AI coding agent starts from zero. It doesn't know your team's review standards, your branching conventions, or the five-step process you always run before merging. So you re-explain it — every session, every project, in slightly different words, until the agent's behavior drifts from what you actually wanted.
+
+**Skills fix that.** A skill is a focused set of markdown instructions that encodes a specific way of working — a review process, a planning workflow, an analysis format — once, precisely, so any agent that can read a file can run it the same way every time.
 
 > [!NOTE]
-> If your agent can read a file, it can use these skills.
+> If your agent can read a file, it can use these skills. No plugins, no frameworks, no SDK.
 
 ---
 
@@ -40,10 +45,10 @@ git clone https://github.com/codered/ai .codered
 
 **2. Tell your agent where to find the skills**
 
-Add one line to your agent's context file. The exact file depends on your agent — see [Installation](#installation) for specifics.
+Add one line to your agent's context file. The exact file depends on your agent — see [Installation](#-installation) for specifics.
 
 ```text
-Skills are available at <path>/skills/. Load the README.md in the relevant skill folder when asked to use a skill.
+Skills are available at <path>/skills/. Load the SKILL.md in the relevant skill folder when asked to use a skill.
 ```
 
 **3. Use a skill**
@@ -62,7 +67,7 @@ That's it.
 
 Reviews your code against the same engineering standards used for flight software, defense systems, and mission-critical infrastructure.
 
-Works in two modes: full codebase scan during development, diff-first during PR review. Critical findings block the merge. Every issue comes with three fix options — with trade-offs and working code in your language.
+Works in two modes — full codebase scan during development, diff-first during PR review. Critical findings block the merge. Every issue comes with three fix options, trade-offs included, and working code in your language.
 
 | | |
 |---|---|
@@ -70,6 +75,17 @@ Works in two modes: full codebase scan during development, diff-first during PR 
 | **Languages** | C/C++, Python, Go, Rust, Java, JavaScript/TypeScript |
 | **Standards** | NASA Power of Ten · DOD JSF AV · SEI CERT · MISRA · OWASP |
 | **Gate** | P0/Critical blocks merge · 2+ approvals to override on teams |
+
+### 🛡️ [Applying NASA/DOD Coding Standards](skills/applying-nasa-dod-coding-standards/)
+
+The companion to the review skill above — this one shapes code *as you write it*, rather than grading it after the fact. Applies the discipline behind flight software (NASA's "Power of Ten") and defense systems (DISA STIGs, CERT Secure Coding, NIST SSDF) to everyday production work, with TDD as the non-negotiable baseline: no production code without a failing test first.
+
+| | |
+|---|---|
+| **Trigger** | Writing production code · reviewing a PR · refactoring safety-critical systems · setting standards for a new project |
+| **Discipline** | TDD as the iron law — write the failing test, then the minimum code to pass, then refactor |
+| **Rules** | Bounded loops · short functions · assertion density · minimal scope · input validation |
+| **Standards** | NASA Power of Ten · DISA STIGs · CERT Secure Coding · NIST SSDF |
 
 ### 🤖 [Agent Team](skills/agent-team/)
 
@@ -123,7 +139,6 @@ Triages every exchange as low-stakes or high-stakes first, and that single call 
 | **Pushback** | 1 mention (low-stakes) · up to 3 rounds (high-stakes), then defers either way |
 | **Output** | Conversational prose (low-stakes/debate) · structured findings list (high-stakes/design review) |
 
-
 ---
 
 ## 🔧 Installation
@@ -141,7 +156,7 @@ Add to `~/.claude/CLAUDE.md`:
 
 ```text
 Skills are available at ~/.codered/skills/. When asked to use a skill,
-load and follow the README.md in the relevant skill folder.
+load and follow the SKILL.md in the relevant skill folder.
 ```
 
 </details>
@@ -157,7 +172,7 @@ Add to `CLAUDE.md` in your project root:
 
 ```text
 Skills are available at .codered/skills/. When asked to use a skill,
-load and follow the README.md in the relevant skill folder.
+load and follow the SKILL.md in the relevant skill folder.
 ```
 
 </details>
@@ -175,7 +190,7 @@ Add to `~/.cursor/rules/codered.mdc`:
 
 ```text
 Skills are available at ~/.codered/skills/. When asked to use a skill,
-load and follow the README.md in the relevant skill folder.
+load and follow the SKILL.md in the relevant skill folder.
 ```
 
 </details>
@@ -191,7 +206,7 @@ Add to `.cursor/rules/codered.mdc` in your project root:
 
 ```text
 Skills are available at .codered/skills/. When asked to use a skill,
-load and follow the README.md in the relevant skill folder.
+load and follow the SKILL.md in the relevant skill folder.
 ```
 
 </details>
@@ -206,7 +221,7 @@ Add to `.github/copilot-instructions.md`:
 
 ```text
 Skills are available at .codered/skills/. When asked to use a skill,
-load and follow the README.md in the relevant skill folder.
+load and follow the SKILL.md in the relevant skill folder.
 ```
 
 ### Gemini CLI
@@ -219,7 +234,7 @@ Add to `~/.gemini/GEMINI.md`:
 
 ```text
 Skills are available at ~/.codered/skills/. When asked to use a skill,
-load and follow the README.md in the relevant skill folder.
+load and follow the SKILL.md in the relevant skill folder.
 ```
 
 ### Any agent
@@ -228,7 +243,7 @@ If your agent reads a context file — `AGENTS.md`, `system-prompt.txt`, `.curso
 
 ```text
 Skills are available at <path>/skills/. When asked to use a skill,
-load and follow the README.md in the relevant skill folder.
+load and follow the SKILL.md in the relevant skill folder.
 ```
 
 Use the path that matches where you cloned the repo.
@@ -240,12 +255,12 @@ Use the path that matches where you cloned the repo.
 
 ## 💡 How skills work
 
-Each skill is a folder inside `skills/`. When you invoke a skill by name, your agent loads the `README.md` in that folder and follows its instructions from that point forward. Companion files (referenced inside the README) are loaded as needed during execution.
+Each skill is a folder inside `skills/`. When you invoke a skill by name, your agent loads the `SKILL.md` in that folder — a YAML frontmatter block (`name`, `description`) followed by the instructions — and follows it from that point forward. Companion files referenced inside are loaded as needed during execution.
 
 ```
 skills/
 └── nasa-dod-code-review/
-    ├── README.md              ← agent entry point
+    ├── SKILL.md               ← agent entry point (frontmatter + instructions)
     ├── standards-sources.md   ← fetched at runtime
     ├── reviewer-prompt.md     ← analysis instructions
     ├── severity-guide.md      ← P0–P3 classification
@@ -274,7 +289,7 @@ Skills are plain markdown. They work because agents are good at following clear 
 Contributions are welcome. A few things before you start:
 
 - **Open an issue first** for new skills so we can align on scope
-- **New skills** should follow the structure in `skills/nasa-dod-code-review/` — one `README.md` as the agent entry point, companion files for anything that would bloat it
+- **New skills** should follow the structure in `skills/nasa-dod-code-review/` — a `SKILL.md` with frontmatter as the agent entry point, companion files for anything that would bloat it
 - **Test with at least two agents** before submitting a PR
 - **No vague instructions** — if a step could be interpreted two ways, pick one and make it explicit
 
@@ -294,3 +309,4 @@ If these skills save you time or catch a bug before it ships, consider leaving a
 ## 📄 License
 
 MIT — see [LICENSE](LICENSE) for details.
+</content>
