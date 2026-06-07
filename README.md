@@ -13,9 +13,9 @@
 ---
 
 <p align="center">
-  <img src="assets/demo/demo.gif" alt="The NASA/DOD Code Review skill catching an unbounded loop, citing the violated rule, offering three fix options, and blocking the merge" width="800">
+  <img src="assets/demo/nasa-dod-code-review/demo.gif" alt="The NASA/DOD Code Review skill catching an unbounded loop, citing the violated rule, offering three fix options, and blocking the merge" width="800">
   <br>
-  <sub>The <a href="skills/nasa-dod-code-review/">NASA/DOD Code Review</a> skill catching a real Power-of-Ten violation — rule citation, fix options, and merge gate, all in one pass. (<a href="assets/demo/demo.tape">regenerate with VHS</a>)</sub>
+  <sub>The <a href="skills/nasa-dod-code-review/">NASA/DOD Code Review</a> skill catching a real Power-of-Ten violation — rule citation, fix options, and merge gate, all in one pass. (<a href="assets/demo/nasa-dod-code-review/demo.tape">regenerate with VHS</a>)</sub>
 </p>
 
 ---
@@ -69,6 +69,8 @@ Reviews your code against the same engineering standards used for flight softwar
 
 Works in two modes — full codebase scan during development, diff-first during PR review. Critical findings block the merge. Every issue comes with three fix options, trade-offs included, and working code in your language.
 
+> 📺 See it catch a real Power-of-Ten violation in the demo at the top of this README.
+
 | | |
 |---|---|
 | **Trigger** | `nasa-dod review` · `nasa-dod dev review` · `nasa-dod pr review` |
@@ -79,6 +81,10 @@ Works in two modes — full codebase scan during development, diff-first during 
 ### 🛡️ [Applying NASA/DOD Coding Standards](skills/applying-nasa-dod-coding-standards/)
 
 The companion to the review skill above — this one shapes code *as you write it*, rather than grading it after the fact. Applies the discipline behind flight software (NASA's "Power of Ten") and defense systems (DISA STIGs, CERT Secure Coding, NIST SSDF) to everyday production work, with TDD as the non-negotiable baseline: no production code without a failing test first.
+
+<p align="center">
+  <img src="assets/demo/applying-nasa-dod-coding-standards/demo.gif" alt="The skill opening with the Iron Law, writing a failing rate-limiter test first, watching it fail red, then writing the minimum code to turn it green" width="700">
+</p>
 
 | | |
 |---|---|
@@ -93,6 +99,10 @@ Assembles a five-role engineering team inside any repository — PM, Developer, 
 
 The PM creates a phased plan with explicit gate criteria. The Dev agent implements using TDD and self-reviews with the NASA/DOD Code Review skill before handoff. QA and Security review each completed task while Dev moves forward. DevOps handles CI/CD, infra, and produces the final readiness gate before anything ships.
 
+<p align="center">
+  <img src="assets/demo/agent-team/demo.gif" alt="The agent team's rolling pipeline — Dev marks a task in_review and immediately starts the next one while QA and Security review in parallel, never blocking" width="700">
+</p>
+
 | | |
 |---|---|
 | **Trigger** | `init agent team` · `agent team` · `agent team status` |
@@ -105,6 +115,10 @@ The PM creates a phased plan with explicit gate criteria. The Dev agent implemen
 Produces a structured Markdown analysis of any piece of code — function breakdowns, data flow, dependencies, and test case analysis — within a strict 2-minute time budget. Emits live status updates as it works so you always know where it is.
 
 Covers purpose, parameters, return values, side effects, error conditions, and edge cases. Saves the result as `<filename>_analysis.md` when file tools are available. Designed for developers who need to quickly understand code they didn't write.
+
+<p align="center">
+  <img src="assets/demo/code-analyst/demo.gif" alt="The skill emitting live status updates while reading code, then producing a structured Markdown analysis with Overview, Parameters, and Edge Cases sections, and saving it to a file" width="700">
+</p>
 
 | | |
 |---|---|
@@ -119,6 +133,10 @@ Reads an entire codebase and produces a multi-document specification suite thoro
 
 Works in five phases: orientation, ambiguity resolution, module-by-module analysis, cross-cutting concerns, and delivery. Outputs a `spec/` directory with numbered documents covering architecture, requirements, assumptions, limitations, data models, API contracts, per-module deep-dives, and cross-cutting concerns (auth, error handling, logging, concurrency, security). Designed for large codebases (100+ files) but works at any scale.
 
+<p align="center">
+  <img src="assets/demo/codebase-spec/demo.gif" alt="The skill walking through its five phases — orientation, ambiguity resolution, module analysis, cross-cutting concerns, delivery — then populating a spec/ directory with numbered documents" width="700">
+</p>
+
 | | |
 |---|---|
 | **Trigger** | "write a spec for this codebase" · "document this project" · "I want to migrate this" · "reverse engineer this" |
@@ -131,6 +149,10 @@ Works in five phases: orientation, ambiguity resolution, module-by-module analys
 Challenges a request, design, plan, or position by actively hunting for logical gaps, hidden assumptions, missed edge cases, and unconsidered counter-framings — in a tone that's friendly yet firm. Doubles as a general-purpose debate partner for any topic, technical or not.
 
 Triages every exchange as low-stakes or high-stakes first, and that single call drives everything downstream: how many rounds of pushback it runs, how direct its tone gets, and whether it replies in structured findings or natural conversation. It's advisory only — it never blocks anything, and it never re-raises a concern you've already closed.
+
+<p align="center">
+  <img src="assets/demo/devils-advocate/demo.gif" alt="The skill auto-offering to challenge a plan to remove a cache layer, then — once accepted — raising a hidden assumption and a missed edge case in its structured high-stakes findings format" width="700">
+</p>
 
 | | |
 |---|---|
