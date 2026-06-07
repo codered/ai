@@ -12,15 +12,10 @@
 
 ---
 
-<!--
-  TODO: drop a demo GIF/recording here before opening the PR.
-  Good candidate: the NASA/DOD Code Review skill catching a real P0 issue
-  mid-review — show the trigger phrase, the finding with its three fix
-  options, and the merge gate firing. That's the moment that sells the repo
-  in under 15 seconds.
--->
 <p align="center">
-  <em>📺 Demo coming soon — a 15-second clip of one of these skills catching a real bug, live.</em>
+  <img src="assets/demo/demo.gif" alt="The NASA/DOD Code Review skill catching an unbounded loop, citing the violated rule, offering three fix options, and blocking the merge" width="800">
+  <br>
+  <sub>The <a href="skills/nasa-dod-code-review/">NASA/DOD Code Review</a> skill catching a real Power-of-Ten violation — rule citation, fix options, and merge gate, all in one pass. (<a href="assets/demo/demo.tape">regenerate with VHS</a>)</sub>
 </p>
 
 ---

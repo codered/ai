@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Demo stand-in for the real nasa-dod-code-review skill — replays a
+# condensed, real finding so the README GIF shows authentic output.
+exec bash "$(dirname "$0")/transcript.sh"
