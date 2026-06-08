@@ -184,6 +184,10 @@ Triages every exchange as low-stakes or high-stakes first, and that single call 
 
 Turns "I want to learn X" into a self-contained, multi-chapter course written straight to disk. Asks what you want to learn, how deep to go (beginner/intermediate/advanced), and your background — proposes a chapter outline you can adjust before anything is written, then generates markdown chapters with diagrams, worked examples, and quizzes, plus a separate answer key with reasoning, and a combined PDF when pandoc is available.
 
+<p align="center">
+  <img src="assets/demo/teach-me/demo.gif" alt="The teach-me skill running the intake flow, presenting a 6-chapter outline for approval, then writing the first chapter with its quiz — with ANSWERS.md updated in the same pass" width="700">
+</p>
+
 | | |
 |---|---|
 | **Trigger** | "teach me X" · "I want to learn Y" · "create a lesson on Z" · "build me a course on..." |
