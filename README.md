@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-7-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-8-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -179,6 +179,23 @@ Triages every exchange as low-stakes or high-stakes first, and that single call 
 | **Categories** | Logical/reasoning gaps · hidden assumptions · missed edge cases · counter-framings |
 | **Pushback** | 1 mention (low-stakes) · up to 3 rounds (high-stakes), then defers either way |
 | **Output** | Conversational prose (low-stakes/debate) · structured findings list (high-stakes/design review) |
+
+### 📚 [Teach Me](skills/teach-me/)
+
+Turns "I want to learn X" into a self-contained, multi-chapter course written straight to disk. Asks what you want to learn, how deep to go (beginner/intermediate/advanced), and your background — proposes a chapter outline you can adjust before anything is written, then generates markdown chapters with diagrams, worked examples, and quizzes, plus a separate answer key with reasoning, and a combined PDF when pandoc is available.
+
+<p align="center">
+  <img src="assets/demo/teach-me/demo.gif" alt="The teach-me skill running the intake flow, presenting a 6-chapter outline for approval, then writing the first chapter with its quiz — with ANSWERS.md updated in the same pass" width="700">
+</p>
+
+| | |
+|---|---|
+| **Trigger** | "teach me X" · "I want to learn Y" · "create a lesson on Z" · "build me a course on..." |
+| **Flow** | Intake (topic/depth/background) → outline approval checkpoint → chapter-by-chapter generation |
+| **Output** | `lessons/<topic-slug>/` — numbered chapters, `00_index.md`, `ANSWERS.md`, optional combined PDF |
+| **Depth** | Beginner · Intermediate · Advanced — calibrates vocabulary, pacing, and chapter count |
+
+---
 
 ### 🧠 [Memory](skills/memory/)
 
