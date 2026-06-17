@@ -1,5 +1,5 @@
 from nasa_dod_agent.fix_parser import FixParser
-from nasa_dod_agent.models import Patch, PatchError
+from nasa_dod_agent.models import Patch
 
 
 def test_parse_valid_patches():

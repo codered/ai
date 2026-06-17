@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, patch
-from nasa_dod_agent.nodes.re_review_changed import re_review_changed_node
+
 from nasa_dod_agent.models import Finding, Severity
+from nasa_dod_agent.nodes.re_review_changed import re_review_changed_node
+
 
 def test_re_review_reads_changed_files(temp_project):
     target = temp_project / "main.py"

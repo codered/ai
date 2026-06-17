@@ -7,7 +7,6 @@ import click
 
 from nasa_dod_agent.config import ConfigLoader
 from nasa_dod_agent.graph import build_graph
-from nasa_dod_agent.models import RubricConfig
 from nasa_dod_agent.state import GraphState
 
 

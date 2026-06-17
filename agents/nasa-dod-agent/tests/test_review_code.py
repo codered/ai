@@ -1,7 +1,8 @@
 from unittest.mock import MagicMock, patch
+
+from nasa_dod_agent.models import Finding, Severity
 from nasa_dod_agent.nodes.review_code import review_code_node
 from nasa_dod_agent.state import GraphState
-from nasa_dod_agent.models import Finding, Severity
 
 
 def test_review_code_node_collects_findings(temp_project):

@@ -1,4 +1,4 @@
-from nasa_dod_agent.models import Finding, Patch, RubricConfig, Severity, FixOption
+from nasa_dod_agent.models import Finding, RubricConfig, Severity
 
 
 def test_finding_creation():

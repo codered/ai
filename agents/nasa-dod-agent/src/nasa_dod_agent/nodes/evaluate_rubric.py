@@ -25,6 +25,26 @@ def evaluate_rubric_node(state: GraphState) -> dict:
     if maxed_out and not rubric_passed:
         rubric_passed = True
 
+    # Write human-readable state snapshot
+    import json
+    from pathlib import Path
+
+    project_path = Path(state["target_path"])
+    state_file = project_path / ".nasa-dod-agent" / "state.json"
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    snapshot = {
+        "target_path": str(state["target_path"]),
+        "iteration": iteration,
+        "rubric_passed": rubric_passed,
+        "p0_count": counts[Severity.P0],
+        "p1_count": counts[Severity.P1],
+        "p2_count": counts[Severity.P2],
+        "p3_count": counts[Severity.P3],
+        "files_reviewed": len(state.get("files_reviewed", [])),
+        "files_modified": len(state.get("files_modified", [])),
+    }
+    state_file.write_text(json.dumps(snapshot, indent=2))
+
     return {
         "rubric_passed": rubric_passed,
         "p0_count": counts[Severity.P0],

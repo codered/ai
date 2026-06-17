@@ -1,6 +1,8 @@
 import os
 from unittest.mock import patch
+
 from nasa_dod_agent.llm_client import LLMClient
+
 
 def test_from_env_reads_openai_vars():
     with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key", "OPENAI_MODEL": "o3-mini"}, clear=False):

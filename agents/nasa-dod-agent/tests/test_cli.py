@@ -1,5 +1,7 @@
 from click.testing import CliRunner
-from nasa_dod_agent.cli import main, init_config, restore
+
+from nasa_dod_agent.cli import init_config, main, restore
+
 
 def test_cli_help():
     runner = CliRunner()

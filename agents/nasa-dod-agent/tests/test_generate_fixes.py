@@ -1,6 +1,8 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+from nasa_dod_agent.models import Finding, Patch, RubricConfig, Severity
 from nasa_dod_agent.nodes.generate_fixes import generate_fixes_node
-from nasa_dod_agent.models import Finding, Severity, Patch, RubricConfig
+
 
 def make_state(findings):
     return {

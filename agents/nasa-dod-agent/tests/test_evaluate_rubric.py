@@ -1,6 +1,6 @@
+from nasa_dod_agent.models import Finding, RubricConfig, Severity
 from nasa_dod_agent.nodes.evaluate_rubric import evaluate_rubric_node
-from nasa_dod_agent.models import Finding, Severity, RubricConfig
-from nasa_dod_agent.state import GraphState
+
 
 def make_state(findings, config=None):
     config = config or RubricConfig(max_p0=0, max_p1=2)

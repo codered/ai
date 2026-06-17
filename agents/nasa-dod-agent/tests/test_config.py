@@ -1,6 +1,5 @@
-import os
-from pathlib import Path
-from nasa_dod_agent.config import ConfigLoader, DEFAULT_CONFIG
+from nasa_dod_agent.config import ConfigLoader
+
 
 def test_default_config_values():
     config = ConfigLoader._default_config()

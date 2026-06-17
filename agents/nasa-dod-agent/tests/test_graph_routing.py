@@ -1,5 +1,6 @@
-from nasa_dod_agent.graph import build_graph, should_continue
-from nasa_dod_agent.models import Finding, Severity, RubricConfig
+from nasa_dod_agent.graph import should_continue
+from nasa_dod_agent.models import Finding, RubricConfig, Severity
+
 
 def test_should_continue_passes():
     state = {

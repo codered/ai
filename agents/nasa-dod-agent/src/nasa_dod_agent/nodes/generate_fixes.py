@@ -9,7 +9,6 @@ from nasa_dod_agent.llm_client import LLMClient
 from nasa_dod_agent.models import Finding, Patch, Severity
 from nasa_dod_agent.state import GraphState
 
-
 SEVERITY_ORDER = {Severity.P0: 0, Severity.P1: 1, Severity.P2: 2, Severity.P3: 3}
 
 

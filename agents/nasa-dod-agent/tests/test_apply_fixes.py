@@ -1,6 +1,6 @@
-from pathlib import Path
-from nasa_dod_agent.nodes.apply_fixes import apply_fixes_node
 from nasa_dod_agent.models import Patch
+from nasa_dod_agent.nodes.apply_fixes import apply_fixes_node
+
 
 def test_apply_fixes_creates_backup(temp_project):
     target = temp_project / "main.py"
