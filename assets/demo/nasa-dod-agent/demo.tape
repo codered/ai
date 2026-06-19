@@ -4,6 +4,14 @@
 # Requires: OPENAI_API_KEY exported in the shell that runs `vhs` — this is a
 # real, live run of the CLI against the buggy fixture in sample/, not a
 # pre-recorded transcript.
+#
+# IMPORTANT: vhs does not synchronize with the shell — it just plays through
+# this script's Sleep/Type timeline on its own clock and tears down the whole
+# session (browser, ttyd, the pty, and anything still running in it) once the
+# script ends, regardless of whether a command is still running. So the Sleep
+# below must be longer than the real review can possibly take, and Hide/Show
+# (which only pauses frame *capture*, not real time) is what keeps that long
+# wait from being visible as dead air in the rendered gif.
 
 Output demo.gif
 
@@ -14,25 +22,27 @@ Set Height 620
 Set Padding 20
 Set Theme "Dracula"
 Set TypingSpeed 60ms
-Set PlaybackSpeed 3.0
 
 Hide
-Type "export PATH=$PWD:$PATH && cp fixture/readconfig.go sample/readconfig.go && rm -rf sample/.nasa-dod-agent && clear"
+Type "export PATH=$PWD:$PATH && cp fixture/divide.go sample/divide.go && rm -rf sample/.nasa-dod-agent && clear"
 Enter
 Show
 
-Type "cat sample/readconfig.go"
+Type "cat sample/divide.go"
 Sleep 600ms
 Enter
 Sleep 2.5s
 
-Type "nasa-dod-agent review --reset --max-rounds 2 sample/"
-Sleep 600ms
+Type "nasa-dod-agent review --reset --max-rounds 2 sample/  # calls a real LLM, finishes in a few minutes..."
+Sleep 800ms
 Enter
 
-Sleep 280s
+Hide
+Sleep 650s
+Show
 
-Type "cat sample/readconfig.go"
+Sleep 1s
+Type "git diff --no-index --color=always -- fixture/divide.go sample/divide.go"
 Sleep 600ms
 Enter
-Sleep 4s
+Sleep 12s
