@@ -216,6 +216,31 @@ Always delegates the actual reading, categorizing, and writing to a sub-agent, s
 
 ---
 
+## 🤖 Agents
+
+Not every problem fits in a markdown skill loaded into someone else's context window. Some need their own process: a loop that reviews, fixes, re-reviews, and repeats — with state that survives a crash and a rubric that decides when to stop. The [`agents/`](agents/) directory holds standalone tools like that.
+
+### 🛰️ [NASA/DoD Deep Agent](agents/nasa-dod-agent/)
+
+A LangGraph CLI that runs the NASA/DOD review loop end-to-end instead of just reporting it: scans a codebase, generates patches for findings above your fix threshold, applies them with backups, re-reviews only the changed files, and repeats until the rubric passes or it hits `max_iterations`.
+
+<p align="center">
+  <img src="assets/demo/nasa-dod-agent/demo.gif" alt="The NASA/DoD Deep Agent reviewing a Go file with a discarded error, generating a patch, applying it, and re-reviewing — the fixed file now checks and returns the error" width="800">
+  <br>
+  <sub>A live run: catches a discarded <code>os.Open</code> error, patches it, and re-reviews the result. (<a href="assets/demo/nasa-dod-agent/demo.tape">regenerate with VHS</a>)</sub>
+</p>
+
+| | |
+|---|---|
+| **Install** | `cd agents/nasa-dod-agent && uv pip install -e ".[dev]"` |
+| **Run** | `nasa-dod-agent review path/to/code` |
+| **Loop** | review → evaluate rubric → generate fix → apply → re-review → repeat |
+| **State** | Checkpoints + `.bak` backups under `.nasa-dod-agent/` — resumable and restorable |
+
+See the [nasa-dod-agent README](agents/nasa-dod-agent/) for full usage, config, and architecture.
+
+---
+
 ## 🔧 Installation
 
 ### Claude Code
