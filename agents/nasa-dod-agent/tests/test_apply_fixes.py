@@ -164,6 +164,49 @@ def test_reverts_incomplete_go_patch(temp_project):
     assert any("broke the build" in e for e in result["patch_errors"])
 
 
+@pytest.mark.skipif(shutil.which("go") is None, reason="go toolchain not installed")
+def test_revert_restores_pristine_state_for_multi_patch_same_file(temp_project):
+    """Regression test: a real demo run sent two patches at the same file in
+    one batch (one changing the signature, one updating the return inside
+    the function). apply_fixes_node re-backs-up the file before applying
+    each patch, so the second backup captures the file *after* the first
+    patch already landed — not the pristine pre-batch content. When the
+    build check then fails and triggers a revert, the file is restored to
+    that post-first-patch snapshot instead of the original, leaving a
+    half-patched, broken file on disk instead of a clean rollback.
+    """
+    (temp_project / "go.mod").write_text("module sample\n\ngo 1.21\n")
+    target = temp_project / "readconfig.go"
+    original = (
+        "package sample\n\n"
+        "func ReadConfig() []byte {\n"
+        "\tdata := make([]byte, 1024)\n"
+        "\treturn data\n"
+        "}\n"
+    )
+    target.write_text(original)
+
+    state = _state_with_patches(temp_project, [
+        Patch(
+            file_path=str(target),
+            description="add error to signature",
+            search_block="func ReadConfig() []byte {",
+            replace_block="func ReadConfig() ([]byte, error) {",
+        ),
+        Patch(
+            file_path=str(target),
+            description="this patch fails to parse/apply, build stays broken",
+            search_block="this text does not exist in the file",
+            replace_block="irrelevant",
+        ),
+    ])
+
+    result = apply_fixes_node(state)
+
+    assert target.read_text() == original
+    assert result["files_modified"] == []
+
+
 @pytest.mark.skipif(
     shutil.which("gcc") is None and shutil.which("clang") is None,
     reason="no C compiler installed",

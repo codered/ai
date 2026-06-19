@@ -1,0 +1,5 @@
+#!/bin/bash
+# Thin wrapper so the demo can type `nasa-dod-agent ...` directly instead of
+# the full `uv run --project ...` invocation. Runs the real CLI — nothing
+# in this demo is faked or pre-recorded.
+exec uv run --project "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../agents/nasa-dod-agent" && pwd)" nasa-dod-agent "$@"

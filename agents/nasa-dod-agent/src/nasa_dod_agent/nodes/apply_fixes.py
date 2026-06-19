@@ -116,15 +116,20 @@ def apply_fixes_node(state: GraphState) -> dict:
                 errors.append(f"File not found: {file_path}")
                 continue
 
-            # Create backup in .nasa-dod-agent/backups/
-            local_backup = backup_dir / (file_path.name + ".bak")
-            local_backup.write_bytes(file_path.read_bytes())
+            # Back up only on this file's first patch in the batch — a
+            # second patch to the same file must not overwrite the backup
+            # with already-modified content, or a revert would restore the
+            # post-first-patch state instead of the pristine original.
+            if str(file_path) not in backup_for:
+                local_backup = backup_dir / (file_path.name + ".bak")
+                local_backup.write_bytes(file_path.read_bytes())
+                backup_paths.append(str(local_backup))
+                backup_for[str(file_path)] = local_backup
 
             parser.apply_patch(patch, file_path)
 
-            files_modified.append(str(file_path))
-            backup_paths.append(str(local_backup))
-            backup_for[str(file_path)] = local_backup
+            if str(file_path) not in files_modified:
+                files_modified.append(str(file_path))
         except Exception as e:
             errors.append(str(e))
 
