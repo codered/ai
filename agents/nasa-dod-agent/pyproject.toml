@@ -1,0 +1,33 @@
+[project]
+name = "nasa-dod-agent"
+version = "0.1.0"
+description = "Iterative NASA/DOD code review agent with auto-fix"
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "MIT" }
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "pydantic>=2.0",
+    "click>=8.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio",
+    "ruff",
+]
+
+[project.scripts]
+nasa-dod-agent = "nasa_dod_agent.cli:main"
+
+[tool.ruff]
+line-length = 100
+# Deliberately bad code used as a test fixture for the reviewer agent itself.
+extend-exclude = ["tests/fixtures/bad_python_module"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
