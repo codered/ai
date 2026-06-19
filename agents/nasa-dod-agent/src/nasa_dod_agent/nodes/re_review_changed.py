@@ -9,14 +9,19 @@ from nasa_dod_agent.standards_loader import StandardsLoader
 from nasa_dod_agent.state import GraphState
 
 
-def _run_review(files: List[Path], llm_client: LLMClient, loader: StandardsLoader) -> List[Finding]:
+def _run_review(
+    files: List[Path], llm_client: LLMClient, loader: StandardsLoader, base_path: Path
+) -> List[Finding]:
     """Delegate to review_code's internal review function."""
     from nasa_dod_agent.nodes.review_code import _run_review as _original
-    return _original(files, llm_client, loader)
+    return _original(files, llm_client, loader, base_path)
 
 
 def re_review_changed_node(state: GraphState) -> dict:
     """Review only files that were modified in the last apply."""
+    from nasa_dod_agent.nodes.review_code import _display_path
+
+    base_path = Path(state["target_path"])
     files = [Path(f) for f in state.get("files_modified", []) if Path(f).exists()]
 
     if not files:
@@ -24,10 +29,12 @@ def re_review_changed_node(state: GraphState) -> dict:
 
     llm = LLMClient.from_env(state["config"])
     loader = StandardsLoader()
-    findings = _run_review(files, llm, loader)
+    findings = _run_review(files, llm, loader, base_path)
 
-    # Merge: keep findings from files that weren't re-reviewed
-    reviewed_paths = {str(f) for f in files}
+    # Merge: keep findings from files that weren't re-reviewed. Findings store
+    # file_path the same way review_code displayed it to the LLM, so reuse
+    # that same helper to match them up.
+    reviewed_paths = {_display_path(f, base_path) for f in files}
     old_findings = [f for f in state.get("findings", []) if f.file_path not in reviewed_paths]
     all_findings = old_findings + findings
 

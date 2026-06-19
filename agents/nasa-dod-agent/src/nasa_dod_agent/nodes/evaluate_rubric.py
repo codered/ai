@@ -13,6 +13,8 @@ def evaluate_rubric_node(state: GraphState) -> dict:
     for f in findings:
         counts[f.severity] = counts.get(f.severity, 0) + 1
 
+    # rubric_passed reflects reality only — never forced to True. The CLI/
+    # status command need to tell a genuine pass apart from "we gave up".
     rubric_passed = (
         counts[Severity.P0] <= config.max_p0
         and counts[Severity.P1] <= config.max_p1
@@ -21,9 +23,12 @@ def evaluate_rubric_node(state: GraphState) -> dict:
     )
 
     iteration = state["iteration"] + 1
-    maxed_out = iteration >= config.max_iterations
-    if maxed_out and not rubric_passed:
-        rubric_passed = True
+    if rubric_passed:
+        stop_reason = "rubric_passed"
+    elif iteration >= config.max_iterations:
+        stop_reason = "max_iterations"
+    else:
+        stop_reason = None
 
     # Write human-readable state snapshot
     import json
@@ -36,6 +41,7 @@ def evaluate_rubric_node(state: GraphState) -> dict:
         "target_path": str(state["target_path"]),
         "iteration": iteration,
         "rubric_passed": rubric_passed,
+        "stop_reason": stop_reason,
         "p0_count": counts[Severity.P0],
         "p1_count": counts[Severity.P1],
         "p2_count": counts[Severity.P2],
@@ -47,6 +53,7 @@ def evaluate_rubric_node(state: GraphState) -> dict:
 
     return {
         "rubric_passed": rubric_passed,
+        "stop_reason": stop_reason,
         "p0_count": counts[Severity.P0],
         "p1_count": counts[Severity.P1],
         "p2_count": counts[Severity.P2],

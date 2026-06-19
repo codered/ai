@@ -1,27 +1,8 @@
 # Reviewer Prompt
 
-These are your analysis instructions. Follow them in order for every code
-review pass. By the time you reach this file, you have already fetched the
-standards (via `standards-sources.md`) and know the target language(s). Now
-you examine the code.
+Follow the five passes in order. Do not stop at the first issue — every pass must complete. Record all issues as JSON objects.
 
-Do not stop at the first issue. All five passes must complete before findings
-are handed to `report-template.md`.
-
----
-
-## Before You Begin — Note What Looks Good
-
-Before any analysis pass, read through the code at a high level and note
-**two to five** things the code does well. Be specific:
-- "Consistent use of early-return guards keeps the happy path flat and readable"
-- "All public functions have docstrings with parameter and return documentation"
-- "Error returns are propagated cleanly via a typed Result/error return pattern"
-
-Vague praise ("code looks clean") is not useful. Specific observations set
-the right tone and help the developer trust the rest of the feedback.
-
-These become the **What Looks Good** section of the report.
+**Do not output any prose, markdown, headings, or explanations.** Emit a JSON array only. If you have no findings after all five passes, emit `[]`.
 
 ---
 
@@ -139,32 +120,48 @@ Work through each language detected in the target repo:
 
 ---
 
-## Raw Finding Format
+## Findings — Record as JSON
 
-For each issue found across all passes, record it in this internal format
-before handing off to `report-template.md`:
+For each issue found across all passes, record it directly as a JSON object in an array. Do **not** output prose, text headers, or markdown. Only return a valid JSON array.
 
+Each finding must conform to this schema:
+```json
+{
+  "severity": "P0",
+  "file_path": "path/to/file.ext",
+  "line_number": 42,
+  "rule": "Standard name — Rule number or name",
+  "language": "detected language",
+  "description": "one sentence description of what is wrong",
+  "why_fix": "one to three sentences on the specific failure mode",
+  "fix_options": [
+    {
+      "label": "Short label",
+      "description": "Explanation",
+      "pros": ["benefit 1"],
+      "cons": ["cost 1"],
+      "recommended": true,
+      "code": "optional code snippet"
+    }
+  ]
+}
 ```
-SEVERITY: [P0/P1/P2/P3]
-FILE: path/to/file.ext:line_number
-RULE: [Standard name] — [Rule number or name]
-LANGUAGE: [detected language]
-PASS: [1–5]
-ISSUE: [one sentence description of what is wrong]
-WHY: [one to three sentences on the specific failure mode this causes]
+
+Return exactly:
+```json
+[
+  { ...finding1... },
+  { ...finding2... }
+]
 ```
 
-Once all five passes are complete, hand off to `report-template.md` to format
-the raw findings into the final report. Generate three fix options with
-language-correct code examples for each finding at that stage.
+Array may be empty `[]` if no issues are found after all five passes.
 
 ---
 
 ## Tone Reminders
 
-- Open the report with **What Looks Good** before any findings — always.
-- On P0/P1: be direct and assertive. "This must be fixed before merge." No softening.
-- On P2/P3: be constructive. "Easy to clean up — here are three ways."
-- On overrides: record factually and without judgment. "Override recorded. Developer acknowledged risk."
-- Explain *why* a rule exists once per finding. Never repeat the same explanation twice in a single report.
+- P0/P1 descriptions must be direct: "This must be fixed before merge." No softening.
+- P2/P3 descriptions should be constructive: "Easy to clean up — here are three ways."
+- Explain *why* a rule exists once per finding description. Never repeat the same explanation twice in a single report.
 - Do not use the word "should" for P0 issues. Use "must."

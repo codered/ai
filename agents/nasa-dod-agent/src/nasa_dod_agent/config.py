@@ -54,27 +54,26 @@ class ConfigLoader:
         config_dir.mkdir(parents=True, exist_ok=True)
         config_path = config_dir / cls.CONFIG_FILENAME
         default = cls._default_config()
-        output = {
-            "rubric": {
-                "max_p0": default.max_p0,
-                "max_p1": default.max_p1,
-                "max_p2": default.max_p2,
-                "max_p3": default.max_p3,
-                "fix_threshold": default.fix_threshold,
-            },
-            "limits": {
-                "max_iterations": default.max_iterations,
-            },
-            "llm": {
-                "temperature": default.temperature,
-                "max_tokens": default.max_tokens,
-            },
-            "exclude": [
-                "**/node_modules/**",
-                "**/.git/**",
-                "**/venv/**",
-                "**/__pycache__/**",
-            ],
-        }
-        config_path.write_text(yaml.dump(output, default_flow_style=False))
+        config_path.write_text(
+            "rubric:\n"
+            f"  max_p0: {default.max_p0}\n"
+            f"  max_p1: {default.max_p1}\n"
+            f"  max_p2: {default.max_p2}\n"
+            f"  max_p3: {default.max_p3}\n"
+            "  # 0 = fix nothing, 1 = fix P0+P1, 2 = fix P0+P1+P2, 3 = fix everything\n"
+            f"  fix_threshold: {default.fix_threshold}\n"
+            "\n"
+            "limits:\n"
+            f"  max_iterations: {default.max_iterations}\n"
+            "\n"
+            "llm:\n"
+            f"  temperature: {default.temperature}\n"
+            f"  max_tokens: {default.max_tokens}\n"
+            "\n"
+            "exclude:\n"
+            "  - \"**/node_modules/**\"\n"
+            "  - \"**/.git/**\"\n"
+            "  - \"**/venv/**\"\n"
+            "  - \"**/__pycache__/**\"\n"
+        )
         return default

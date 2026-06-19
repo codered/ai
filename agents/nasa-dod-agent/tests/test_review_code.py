@@ -1,8 +1,17 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from nasa_dod_agent.models import Finding, Severity
-from nasa_dod_agent.nodes.review_code import review_code_node
+from nasa_dod_agent.nodes.review_code import _detect_languages, review_code_node
 from nasa_dod_agent.state import GraphState
+
+
+def test_detect_languages_matches_file_extensions():
+    """Regression test: the system prompt once always said 'python' even
+    when reviewing Go (or any other) code, which misled the LLM."""
+    assert _detect_languages([Path("iseven.go"), Path("test/iseven_test.go")]) == ["go"]
+    assert _detect_languages([Path("a.py"), Path("b.rs")]) == ["python", "rust"]
+    assert _detect_languages([]) == []
 
 
 def test_review_code_node_collects_findings(temp_project):
@@ -40,7 +49,7 @@ def test_review_code_node_collects_findings(temp_project):
 
     with (
         patch("nasa_dod_agent.nodes.review_code._run_review") as mock_review,
-        patch("nasa_dod_agent.nodes.review_code.LLMClient") as mock_llm_client,
+        patch("nasa_dod_agent.nodes.review_code.LLMClient"),
     ):
         mock_review.return_value = [mock_finding]
         result = review_code_node(state)

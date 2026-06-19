@@ -1,3 +1,5 @@
+import pytest
+
 from nasa_dod_agent.fix_parser import FixParser
 from nasa_dod_agent.models import Patch
 
@@ -47,3 +49,64 @@ def test_apply_patch_to_file(temp_project):
     parser = FixParser()
     parser.apply_patch(patch)
     assert "range(1000)" in target.read_text()
+
+
+def test_apply_patch_rejects_truncated_search_block(temp_project):
+    """Regression test: an LLM once handed us search_block='func TestIsEven_maxInt_minu'
+    (cut off mid-identifier, missing 's(t *testing.T) {'). A naive str.replace happily
+    "succeeded" and spliced the new function in while leaving the orphaned tail
+    's(t *testing.T) {' behind, corrupting the file into invalid Go. Applying a search
+    block that doesn't land on a token boundary must be rejected instead.
+    """
+    target = temp_project / "main.go"
+    target.write_text("func TestIsEven_maxInt_minus(t *testing.T) {\n\tdoStuff()\n}\n")
+
+    patch = Patch(
+        file_path=str(target),
+        description="rewrite test",
+        search_block="func TestIsEven_maxInt_minu",
+        replace_block="func TestIsEven_maxInt_minus(t *testing.T) {\n\tdoOtherStuff()\n}",
+    )
+    parser = FixParser()
+    with pytest.raises(ValueError, match="truncated"):
+        parser.apply_patch(patch)
+    # File must be untouched, not corrupted.
+    assert target.read_text() == "func TestIsEven_maxInt_minus(t *testing.T) {\n\tdoStuff()\n}\n"
+
+
+def test_apply_patch_rejects_ambiguous_multiple_matches(temp_project):
+    target = temp_project / "main.py"
+    target.write_text("x = 1\nx = 1\n")
+
+    patch = Patch(
+        file_path=str(target),
+        description="fix",
+        search_block="x = 1",
+        replace_block="x = 2",
+    )
+    parser = FixParser()
+    with pytest.raises(ValueError, match="2 locations"):
+        parser.apply_patch(patch)
+    assert target.read_text() == "x = 1\nx = 1\n"
+
+
+def test_ambiguous_match_error_tells_llm_how_to_fix_it(temp_project):
+    """Regression test: a real run got stuck for 10 iterations because the
+    LLM kept resubmitting the same non-unique Search block (a repeated
+    `if err != nil { return nil }` idiom in readconfig.go) without ever
+    being told that the fix is to add more surrounding context. The error
+    message itself must say so, since it's the only thing fed back to the
+    LLM on the next iteration.
+    """
+    target = temp_project / "main.py"
+    target.write_text("x = 1\nx = 1\n")
+
+    patch = Patch(
+        file_path=str(target),
+        description="fix",
+        search_block="x = 1",
+        replace_block="x = 2",
+    )
+    parser = FixParser()
+    with pytest.raises(ValueError, match="more context|surrounding"):
+        parser.apply_patch(patch)

@@ -1,13 +1,58 @@
 """Click CLI entry point for nasa-dod-agent."""
 
 import os
+import shutil
 from pathlib import Path
 
 import click
+from pydantic import ValidationError
 
 from nasa_dod_agent.config import ConfigLoader
 from nasa_dod_agent.graph import build_graph
 from nasa_dod_agent.state import GraphState
+
+
+def _archive_checkpoints(checkpoint_dir: Path) -> None:
+    """Move everything in checkpoint_dir into checkpoint_dir/archive/.
+
+    Uses copy-then-delete rather than ``shutil.move`` so it also works
+    when the destination is on a different filesystem (e.g. in tests).
+    """
+    if not checkpoint_dir.exists():
+        return
+
+    archive = checkpoint_dir / "archive"
+    archive.mkdir(parents=True, exist_ok=True)
+
+    for item in checkpoint_dir.iterdir():
+        if item.name == "archive":
+            continue
+        dest = archive / item.name
+        if dest.exists():
+            shutil.rmtree(dest) if dest.is_dir() else dest.unlink()
+        if item.is_dir():
+            shutil.copytree(item, dest)
+            shutil.rmtree(item)
+        else:
+            shutil.copy2(item, dest)
+            item.unlink()
+
+
+_STOP_MESSAGES = {
+    "rubric_passed": "Rubric passed: YES",
+    "max_iterations": (
+        "Rubric NOT met — hit max_iterations without converging. "
+        "Findings still exceed the configured thresholds."
+    ),
+    "no_fixable_findings": (
+        "Rubric NOT met — no fixable findings. Remaining findings are all "
+        "below fix_threshold. Adjust fix_threshold or max_pX in config.yaml."
+    ),
+}
+
+
+def _stop_message(stop_reason: str | None) -> str:
+    return _STOP_MESSAGES.get(stop_reason, "Rubric NOT met.")
 
 
 @click.group()
@@ -35,22 +80,7 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
     )
 
     if reset:
-        import shutil
-        if (config_dir / "checkpoints").exists():
-            archive = config_dir / "checkpoints" / "archive"
-            archive.mkdir(parents=True, exist_ok=True)
-            for item in (config_dir / "checkpoints").iterdir():
-                if item.name != "archive":
-                    dest = archive / item.name
-                    if dest.exists():
-                        shutil.rmtree(dest) if dest.is_dir() else dest.unlink()
-                    # Can't use shutil.move across filesystems in tests; use copy+remove
-                    if item.is_dir():
-                        shutil.copytree(item, dest, dirs_exist_ok=True)
-                        shutil.rmtree(item)
-                    else:
-                        shutil.copy2(item, dest)
-                        item.unlink()
+        _archive_checkpoints(config_dir / "checkpoints")
         click.echo("Checkpoint reset. Starting fresh.")
 
     elif checkpoint_exists and not no_interactive and not full:
@@ -58,7 +88,15 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
         click.echo("Use --reset to start fresh or --no-interactive to resume silently.")
         return
 
-    config = ConfigLoader.load(project_path)
+    try:
+        config = ConfigLoader.load(project_path)
+    except ValidationError as e:
+        click.echo(f"Invalid {config_dir / 'config.yaml'}:")
+        for err in e.errors():
+            field = ".".join(str(p) for p in err["loc"])
+            click.echo(f"  {field}: {err['msg']} (got {err.get('input')!r})")
+        raise click.Abort()
+
     if config is None:
         config = ConfigLoader.init_config(project_path)
         click.echo(f"Created default config at {config_dir / 'config.yaml'}")
@@ -80,6 +118,7 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
         "last_modified_files": [],
         "config": config,
         "rubric_passed": False,
+        "stop_reason": None,
         "p0_count": 0,
         "p1_count": 0,
         "p2_count": 0,
@@ -96,23 +135,17 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
 
     click.echo("\n--- Review Complete ---")
     click.echo(f"Iterations: {final_state['iteration']}")
-    click.echo(f"P0: {final_state['p0_count']}  P1: {final_state['p1_count']}  P2: {final_state['p2_count']}  P3: {final_state['p3_count']}")
-    click.echo(f"Rubric passed: {'YES' if final_state['rubric_passed'] else 'NO'}")
+    click.echo(
+        f"P0: {final_state['p0_count']}  P1: {final_state['p1_count']}  "
+        f"P2: {final_state['p2_count']}  P3: {final_state['p3_count']}"
+    )
+    click.echo(_stop_message(final_state.get("stop_reason")))
     if final_state.get("patch_errors"):
         click.echo(f"Patch errors: {len(final_state['patch_errors'])}")
+        for err in final_state["patch_errors"]:
+            click.echo(f"  - {err}")
 
-    # Archive on success
-    import shutil
-    cp_dir = config_dir / "checkpoints"
-    if cp_dir.exists():
-        archive = cp_dir / "archive"
-        archive.mkdir(parents=True, exist_ok=True)
-        for item in cp_dir.iterdir():
-            if item.name != "archive":
-                dest = archive / item.name
-                if dest.exists():
-                    shutil.rmtree(dest) if dest.is_dir() else dest.unlink()
-                shutil.move(str(item), str(dest))
+    _archive_checkpoints(config_dir / "checkpoints")
 
 
 @main.command()
@@ -153,7 +186,7 @@ def status(path):
         click.echo(f"  Iteration: {data.get('iteration', 'N/A')}")
         click.echo(f"  P0: {data.get('p0_count', 0)}")
         click.echo(f"  P1: {data.get('p1_count', 0)}")
-        click.echo(f"  Rubric passed: {data.get('rubric_passed', False)}")
+        click.echo(f"  {_stop_message(data.get('stop_reason'))}")
     else:
         click.echo("No active review state found.")
 
@@ -163,7 +196,7 @@ def status(path):
 def init_config(path):
     """Generate a default config.yaml."""
     project_path = Path(path)
-    config = ConfigLoader.init_config(project_path)
+    ConfigLoader.init_config(project_path)
     click.echo(f"Created default config at {project_path / '.nasa-dod-agent' / 'config.yaml'}")
 
 

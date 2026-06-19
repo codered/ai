@@ -1,6 +1,6 @@
 """TypedDict definition for the LangGraph state."""
 
-from typing import List, TypedDict
+from typing import List, Optional, TypedDict
 
 from nasa_dod_agent.models import Finding, Patch, PatchError, RubricConfig
 
@@ -17,6 +17,10 @@ class GraphState(TypedDict):
 
     config: RubricConfig
     rubric_passed: bool
+    # Why the loop stopped: "rubric_passed", "max_iterations", or
+    # "no_fixable_findings" (remaining findings are all below fix_threshold,
+    # so no patches were ever generated for them). None while still running.
+    stop_reason: Optional[str]
     p0_count: int
     p1_count: int
     p2_count: int

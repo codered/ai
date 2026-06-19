@@ -12,10 +12,19 @@ from nasa_dod_agent.state import GraphState
 
 
 def should_continue(state: GraphState) -> str:
-    """Conditional edge: pass → END, fail → generate_fixes."""
+    """Conditional edge after evaluate_rubric: stop → END, else try to fix."""
     if state.get("rubric_passed", False):
         return "end"
+    if state.get("iteration", 0) >= state.get("max_iterations", 10):
+        return "end"
     return "generate_fixes"
+
+
+def should_apply_fixes(state: GraphState) -> str:
+    """Conditional edge after generate_fixes: nothing to apply → END."""
+    if state.get("stop_reason"):
+        return "end"
+    return "apply_fixes"
 
 
 def build_graph(checkpoint_dir: str | None = None):
@@ -36,7 +45,11 @@ def build_graph(checkpoint_dir: str | None = None):
         should_continue,
         {"generate_fixes": "generate_fixes", "end": END},
     )
-    workflow.add_edge("generate_fixes", "apply_fixes")
+    workflow.add_conditional_edges(
+        "generate_fixes",
+        should_apply_fixes,
+        {"apply_fixes": "apply_fixes", "end": END},
+    )
     workflow.add_edge("apply_fixes", "re_review_changed")
     workflow.add_edge("re_review_changed", "evaluate_rubric")
 

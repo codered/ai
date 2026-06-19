@@ -41,7 +41,16 @@ def test_empty_files_modified_returns_existing_findings():
         "review_mode": "incremental",
         "iteration": 1,
         "max_iterations": 10,
-        "findings": [Finding(severity=Severity.P2, file_path="old.py", line_number=1, rule="R", description="D", why_fix="W")],
+        "findings": [
+            Finding(
+                severity=Severity.P2,
+                file_path="old.py",
+                line_number=1,
+                rule="R",
+                description="D",
+                why_fix="W",
+            )
+        ],
         "files_reviewed": [],
         "last_modified_files": [],
         "config": None,

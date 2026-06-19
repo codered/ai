@@ -41,12 +41,6 @@ class Patch(BaseModel):
     description: str = Field(..., description="What this patch does")
     search_block: str = Field(..., description="Text to find in the file")
     replace_block: str = Field(..., description="Text to replace with")
-    context_before: Optional[str] = Field(
-        None, description="Expected lines before search_block"
-    )
-    context_after: Optional[str] = Field(
-        None, description="Expected lines after search_block"
-    )
 
 
 class RubricConfig(BaseModel):
@@ -69,13 +63,3 @@ class PatchError(BaseModel):
     file_path: str
     description: str
     error_message: str
-
-
-class FindingsReport(BaseModel):
-    """Complete report from a review pass."""
-    findings: List[Finding] = Field(default_factory=list)
-    files_reviewed: List[str] = Field(default_factory=list)
-    p0_count: int = 0
-    p1_count: int = 0
-    p2_count: int = 0
-    p3_count: int = 0

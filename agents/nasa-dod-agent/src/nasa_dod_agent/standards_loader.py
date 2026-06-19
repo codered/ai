@@ -36,5 +36,4 @@ class StandardsLoader:
             f"Reviewer Instructions:\n{reviewer}\n\n"
             f"Severity Guide:\n{severity}\n\n"
             f"Languages detected: {', '.join(languages)}\n"
-            "Return findings as structured JSON."
         )

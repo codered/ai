@@ -55,7 +55,3 @@ class LLMClient:
                 max_tokens=self.max_tokens,
             )
         return self._llm
-
-    def with_structured_output(self, schema: type):
-        """Return LLM configured for structured output."""
-        return self.get_llm().with_structured_output(schema)

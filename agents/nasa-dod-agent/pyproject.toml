@@ -26,4 +26,8 @@ nasa-dod-agent = "nasa_dod_agent.cli:main"
 
 [tool.ruff]
 line-length = 100
+# Deliberately bad code used as a test fixture for the reviewer agent itself.
+extend-exclude = ["tests/fixtures/bad_python_module"]
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "W"]

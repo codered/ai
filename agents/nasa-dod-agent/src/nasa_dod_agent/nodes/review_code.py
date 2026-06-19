@@ -1,15 +1,200 @@
 """Node 1: review_code — perform NASA/DOD code review."""
 
 import json
+import re
 from pathlib import Path
 from typing import List
 
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, SystemMessage
+from pydantic import ValidationError
 
 from nasa_dod_agent.llm_client import LLMClient
-from nasa_dod_agent.models import Finding
+from nasa_dod_agent.models import Finding, FixOption
 from nasa_dod_agent.standards_loader import StandardsLoader
 from nasa_dod_agent.state import GraphState
+
+
+def _extract_findings(data: dict | list) -> list[dict]:
+    """Pull findings from various LLM JSON wrapper shapes."""
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in ("findings", "data", "results", "items", "issues"):
+            val = data.get(key)
+            if isinstance(val, list):
+                return val
+        return [data] if data else []
+    return []
+
+
+def _normalise_fix_option(raw: dict) -> dict:
+    """Map common LLM fix_option fields to FixOption model fields."""
+    mapped = {}
+    for k, v in raw.items():
+        key = k.lower()
+        if key in {"label", "description"}:
+            mapped[key] = str(v)
+        elif key == "code":
+            mapped["code"] = str(v) if v is not None else None
+        elif key == "recommended":
+            mapped["recommended"] = bool(v)
+        elif key in {"pros", "cons"}:
+            if isinstance(v, str):
+                mapped[key] = [v]
+            elif isinstance(v, list):
+                mapped[key] = [str(x) for x in v]
+            else:
+                mapped[key] = []
+        elif key in FixOption.model_fields:
+            mapped[key] = v
+    return mapped
+
+
+def _normalise_finding(raw: dict) -> dict:
+    """Map common LLM field names to our model fields."""
+    mapped = {}
+    for k, v in raw.items():
+        key = k.lower()
+        if key in {"file", "filepath", "file_path", "filename"}:
+            mapped["file_path"] = str(v)
+        elif key in {"rule", "rule_id", "standard"}:
+            mapped["rule"] = str(v)
+        elif key == "severity":
+            mapped["severity"] = str(v).upper()
+        elif key in {"issue", "message", "description"}:
+            mapped["description"] = str(v)
+        elif key in {"why", "why_fix", "justification", "impact"}:
+            mapped["why_fix"] = str(v)
+        elif key == "line_number":
+            mapped["line_number"] = int(v) if v is not None else None
+        elif key == "fix_options" and isinstance(v, list):
+            mapped["fix_options"] = [
+                _normalise_fix_option(item) for item in v if isinstance(item, dict)
+            ]
+        elif key in Finding.model_fields:
+            mapped[key] = v
+    return mapped
+
+
+def _strip_fences(content: str) -> str:
+    """Strip markdown code fences so only raw JSON remains."""
+    content = content.strip()
+    # Remove opening fence (e.g. ```json or ``` followed by newline)
+    if content.startswith("```"):
+        newline_pos = content.find("\n")
+        if newline_pos != -1:
+            content = content[newline_pos + 1 :]
+    # Remove closing fence
+    if content.endswith("```"):
+        last_newline = content.rfind("\n", 0, len(content) - 3)
+        if last_newline != -1:
+            content = content[:last_newline]
+        else:
+            content = content[: -len("```")]
+    return content.strip()
+
+
+def _parse_llm_response(content: str) -> list[Finding]:
+    """Parse LLM output into Finding objects."""
+    if not content or not content.strip():
+        return []
+
+    # Strategy 1: Strip fences and try direct JSON parse.
+    stripped = _strip_fences(content)
+    try:
+        data = json.loads(stripped)
+    except json.JSONDecodeError:
+        # Strategy 2: Bracket-matching for raw JSON arrays / objects.
+        for candidate in _extract_json_brackets(content):
+            try:
+                data = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+            break
+        else:
+            data = None
+
+    if data is None:
+        import logging
+        logging.getLogger(__name__).warning(
+            "No JSON findings extracted from LLM response. First 200 chars: %r",
+            content[:200],
+        )
+        return []
+
+    raw_findings = _extract_findings(data)
+    findings = _build_findings(raw_findings)
+    if raw_findings and not findings:
+        # raw_findings non-empty but nothing survived validation: the LLM
+        # returned items that don't match our schema. An empty raw_findings
+        # list just means the LLM found nothing wrong, which isn't a problem.
+        import logging
+        logging.getLogger(__name__).warning(
+            "Parsed %d raw items but zero valid Findings.",
+            len(raw_findings),
+        )
+    return findings
+
+
+def _extract_json_brackets(text: str) -> list[str]:
+    """Find top-level JSON arrays/objects by counting brackets/braces."""
+    results: list[str] = []
+    for m in re.finditer(r"[\[\{]", text):
+        start = m.start()
+        open_char = m.group()
+        close_char = "]" if open_char == "[" else "}"
+        depth = 1
+        for i in range(start + 1, len(text)):
+            char = text[i]
+            if char == open_char:
+                depth += 1
+            elif char == close_char:
+                depth -= 1
+                if depth == 0:
+                    candidate = text[start : i + 1]
+                    try:
+                        json.loads(candidate)
+                        results.append(candidate)
+                    except json.JSONDecodeError:
+                        pass
+                    break
+    return results
+
+
+def _build_findings(raw_findings: list[dict]) -> list[Finding]:
+    """Convert raw dicts to validated Finding models."""
+    findings: list[Finding] = []
+    for item in raw_findings:
+        if not isinstance(item, dict):
+            continue
+        normalised = _normalise_finding(item)
+        allowed = set(Finding.model_fields.keys())
+        filtered = {k: v for k, v in normalised.items() if k in allowed}
+        try:
+            findings.append(Finding(**filtered))
+        except ValidationError:
+            pass  # skip unparseable items
+    return findings
+
+
+
+
+# Extensions this agent knows how to review, mapped to the language name
+# shown to the LLM in the system prompt.
+EXTENSION_LANGUAGES = {
+    ".py": "python",
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".c": "c",
+    ".h": "c",
+    ".cpp": "c++",
+    ".hpp": "c++",
+    ".go": "go",
+    ".rs": "rust",
+    ".java": "java",
+}
 
 
 def _collect_files(target_path: str, mode: str, last_modified: List[str]) -> List[Path]:
@@ -18,21 +203,43 @@ def _collect_files(target_path: str, mode: str, last_modified: List[str]) -> Lis
     if mode == "incremental" and last_modified:
         return [Path(f) for f in last_modified if Path(f).exists()]
 
-    # Full mode: all Python, JS, TS, C, C++, Go, Rust, Java files
-    extensions = {
-        ".py", ".js", ".ts", ".jsx", ".tsx",
-        ".c", ".cpp", ".h", ".hpp",
-        ".go", ".rs", ".java",
-    }
     files = []
-    for ext in extensions:
+    for ext in EXTENSION_LANGUAGES:
         files.extend(target.rglob(f"*{ext}"))
     # Exclude common non-source
     exclude = {"node_modules", ".git", "venv", "__pycache__", ".nasa-dod-agent"}
     return [f for f in files if not any(part in exclude for part in f.parts)]
 
 
-def _run_review(files: List[Path], llm_client: LLMClient, loader: StandardsLoader) -> List[Finding]:
+def _detect_languages(files: List[Path]) -> List[str]:
+    """Languages actually present among the files being reviewed.
+
+    The system prompt reports this to the LLM, so it must reflect the real
+    target — telling a reviewer "Languages detected: python" while showing
+    it Go code is misleading and undermines the review.
+    """
+    languages = {
+        EXTENSION_LANGUAGES.get(f.suffix, f.suffix.lstrip(".") or "unknown") for f in files
+    }
+    return sorted(languages)
+
+
+def _display_path(f: Path, base_path: Path) -> str:
+    """Path to show the LLM: relative to the project root when possible.
+
+    Findings/patches carry this string as ``file_path`` and it must be
+    resolvable later (in ``apply_fixes_node``) relative to the project
+    root, so a bare filename isn't enough once subdirectories are involved.
+    """
+    try:
+        return str(f.relative_to(base_path))
+    except ValueError:
+        return str(f)
+
+
+def _run_review(
+    files: List[Path], llm_client: LLMClient, loader: StandardsLoader, base_path: Path
+) -> List[Finding]:
     """Call LLM to review the collected files."""
     if not files:
         return []
@@ -41,29 +248,20 @@ def _run_review(files: List[Path], llm_client: LLMClient, loader: StandardsLoade
     file_context = ""
     for f in files:
         content = f.read_text()[:2000]  # first 2000 chars per file
-        file_context += f"\n--- {f.name} ---\n{content}\n"
+        file_context += f"\n--- {_display_path(f, base_path)} ---\n{content}\n"
 
-    system_prompt = loader.build_system_prompt(languages=["python"])
+    system_prompt = loader.build_system_prompt(languages=_detect_languages(files))
     human_prompt = f"Review the following files:\n{file_context}"
 
-    prompt = ChatPromptTemplate.from_messages(
-        [("system", system_prompt), ("human", human_prompt)]
-    )
-
-    messages = prompt.format_messages()
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=human_prompt),
+    ]
     raw = llm_client.get_llm().invoke(messages)
 
-    # Try to parse as JSON array of findings
-    try:
-        data = json.loads(raw.content)
-        if isinstance(data, list):
-            return [Finding(**item) for item in data]
-        elif isinstance(data, dict):
-            return [Finding(**data)]
-    except (json.JSONDecodeError, TypeError):
-        pass
+    return _parse_llm_response(str(raw.content))
 
-    return []
+
 
 
 def review_code_node(state: GraphState) -> dict:
@@ -79,7 +277,7 @@ def review_code_node(state: GraphState) -> dict:
 
     llm = LLMClient.from_env(state["config"])
     loader = StandardsLoader()
-    findings = _run_review(files, llm, loader)
+    findings = _run_review(files, llm, loader, Path(state["target_path"]))
 
     files_reviewed = list(set(state.get("files_reviewed", []) + [str(f) for f in files]))
 

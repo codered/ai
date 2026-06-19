@@ -1,0 +1,2 @@
+[console_scripts]
+nasa-dod-agent = nasa_dod_agent.cli:main
