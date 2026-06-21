@@ -31,3 +31,24 @@ def test_load_review_samples_from_llm_section(temp_project):
     config_path.write_text("llm:\n  review_samples: 3\n")
     loaded = ConfigLoader.load(temp_project)
     assert loaded.review_samples == 3
+
+
+def test_init_config_writes_new_limit_fields(temp_project):
+    ConfigLoader.init_config(temp_project)
+    config_path = temp_project / ".nasa-dod-agent" / "config.yaml"
+    content = config_path.read_text()
+    assert "max_iterations: 5" in content
+    assert "max_fix_attempts_per_chunk: 2" in content
+    assert "max_total_fix_attempts: 20" in content
+
+def test_load_new_limit_fields_from_yaml(temp_project):
+    config_path = temp_project / ".nasa-dod-agent" / "config.yaml"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(
+        "limits:\n"
+        "  max_fix_attempts_per_chunk: 4\n"
+        "  max_total_fix_attempts: 50\n"
+    )
+    loaded = ConfigLoader.load(temp_project)
+    assert loaded.max_fix_attempts_per_chunk == 4
+    assert loaded.max_total_fix_attempts == 50

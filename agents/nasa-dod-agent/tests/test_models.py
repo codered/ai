@@ -32,3 +32,25 @@ def test_rubric_config_low_temperature_default():
 def test_rubric_config_review_samples_default():
     config = RubricConfig()
     assert config.review_samples == 1
+
+
+def test_finding_function_name_defaults_to_none():
+    f = Finding(
+        severity=Severity.P0, file_path="a.go", rule="R", description="D", why_fix="W",
+    )
+    assert f.function_name is None
+
+
+def test_rubric_config_max_iterations_lowered_to_five():
+    """max_iterations dropped from 10 to 5 — with per-chunk reviewing now
+    doing finer-grained work per iteration, fewer outer-loop iterations
+    should be needed to converge."""
+    assert RubricConfig().max_iterations == 5
+
+
+def test_rubric_config_max_fix_attempts_per_chunk_default():
+    assert RubricConfig().max_fix_attempts_per_chunk == 2
+
+
+def test_rubric_config_max_total_fix_attempts_default():
+    assert RubricConfig().max_total_fix_attempts == 20
