@@ -225,9 +225,9 @@ Not every problem fits in a markdown skill loaded into someone else's context wi
 A LangGraph CLI that runs the NASA/DOD review loop end-to-end instead of just reporting it: scans a codebase, generates patches for findings above your fix threshold, applies them with backups, re-reviews only the changed files, and repeats until the rubric passes or it hits `max_iterations`.
 
 <p align="center">
-  <img src="assets/demo/nasa-dod-agent/demo.gif" alt="The NASA/DoD Deep Agent reviewing a Go file with a discarded error, generating a patch, applying it, and re-reviewing — the fixed file now checks and returns the error" width="800">
+  <img src="assets/demo/nasa-dod-agent/demo.gif" alt="The NASA/DoD Deep Agent reviewing a Go file with an unguarded divide-by-zero, generating a patch, applying it, and ending with a diff showing the zero-check it added" width="800">
   <br>
-  <sub>A live run: catches a discarded <code>os.Open</code> error, patches it, and re-reviews the result. (<a href="assets/demo/nasa-dod-agent/demo.tape">regenerate with VHS</a>)</sub>
+  <sub>A live run: catches an unguarded divide-by-zero, patches it, and ends with a diff of the fix. (<a href="assets/demo/nasa-dod-agent/demo.tape">regenerate with VHS</a>)</sub>
 </p>
 
 | | |

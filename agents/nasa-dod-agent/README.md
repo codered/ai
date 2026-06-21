@@ -3,9 +3,9 @@
 Iterative code review against NASA/DOD standards. Auto-fixes violations until a configurable rubric is met.
 
 <p align="center">
-  <img src="../../assets/demo/nasa-dod-agent/demo.gif" alt="The NASA/DoD Deep Agent reviewing a Go file with a discarded os.Open error, generating a patch, applying it, and re-reviewing — the fixed file now checks and returns the error" width="800">
+  <img src="../../assets/demo/nasa-dod-agent/demo.gif" alt="The NASA/DoD Deep Agent reviewing a Go file with an unguarded divide-by-zero, generating a patch, applying it, and ending with a diff showing the zero-check it added" width="800">
   <br>
-  <sub>A live run against a deliberately buggy file — review, patch, apply, re-review. (<a href="../../assets/demo/nasa-dod-agent/demo.tape">regenerate with VHS</a>)</sub>
+  <sub>A live run against a deliberately buggy file — review, patch, apply, then a diff of what changed. (<a href="../../assets/demo/nasa-dod-agent/demo.tape">regenerate with VHS</a>)</sub>
 </p>
 
 ## Install
