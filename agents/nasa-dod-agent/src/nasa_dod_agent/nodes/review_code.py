@@ -1,6 +1,7 @@
 """Node 1: review_code — perform NASA/DOD code review."""
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import List
@@ -8,10 +9,13 @@ from typing import List
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
 
+from nasa_dod_agent.chunker import FILE_LEVEL, chunk_file
 from nasa_dod_agent.llm_client import LLMClient
 from nasa_dod_agent.models import Finding, FixOption
 from nasa_dod_agent.standards_loader import StandardsLoader
 from nasa_dod_agent.state import GraphState
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_findings(data: dict | list) -> list[dict]:
@@ -197,8 +201,18 @@ EXTENSION_LANGUAGES = {
 }
 
 
-def _collect_files(target_path: str, mode: str, last_modified: List[str]) -> List[Path]:
-    """Collect files to review based on mode."""
+def _collect_files(
+    target_path: str, mode: str, last_modified: List[str], target_file: str | None = None
+) -> List[Path]:
+    """Collect files to review based on mode.
+
+    ``target_file``, when set, means the CLI was pointed at a single file
+    rather than a directory — return just that file, ignoring mode and
+    the exclude globs entirely.
+    """
+    if target_file:
+        return [Path(target_file)]
+
     target = Path(target_path)
     if mode == "incremental" and last_modified:
         return [Path(f) for f in last_modified if Path(f).exists()]
@@ -258,41 +272,55 @@ def _run_review(
     base_path: Path,
     samples: int = 1,
 ) -> List[Finding]:
-    """Call LLM to review the collected files, one file per call.
+    """Call LLM to review the collected files, one function/chunk per call.
 
-    A combined, all-files-in-one-prompt review used to be a single LLM
-    call, but a real run showed that batching even two small, unrelated
-    files into one prompt made the model report zero findings — even
-    though it reliably caught the exact same issue when shown the
-    offending file alone. Reviewing one file per call costs more calls but
-    avoids that cross-file dilution.
+    Each file is split into chunks (one per top-level function/method,
+    plus a file-level chunk for everything else) via ``chunk_file`` — a
+    real run showed that batching even two small, unrelated files into
+    one prompt made the model report zero findings, even though it
+    reliably caught the exact same issue when shown the offending content
+    alone. Reviewing one chunk per call costs more calls but avoids that
+    dilution.
 
-    ``samples`` reviews each file that many times and unions the results
-    (deduped) — a real run showed the same file, same prompt, returning 2
-    findings on one call and 0 on the next at temperature 0.2, so a single
-    sample isn't reliable evidence of a clean file on a noisy model.
+    ``samples`` reviews each chunk that many times and unions the results
+    (deduped per chunk) — a real run showed the same content, same
+    prompt, returning findings on one call and none on the next at
+    temperature 0.2, so a single sample isn't reliable evidence of a
+    clean chunk on a noisy model.
     """
     findings: List[Finding] = []
     for f in files:
-        # Full content: a prior 2000-char-per-file cap silently hid the
-        # tail of any file longer than that from the reviewer — a real run
-        # missed a duplicate function declaration (a Go vet error) sitting
-        # past the cutoff and reported zero findings.
-        content = f.read_text()
-        file_context = f"\n--- {_display_path(f, base_path)} ---\n{content}\n"
+        display_path = _display_path(f, base_path)
+        language = EXTENSION_LANGUAGES.get(f.suffix, "")
+        chunks = chunk_file(f, language)
 
-        system_prompt = loader.build_system_prompt(languages=_detect_languages([f]))
-        human_prompt = f"Review the following file:\n{file_context}"
+        function_count = sum(1 for c in chunks if c.name != FILE_LEVEL)
+        noun = "function" if function_count == 1 else "functions"
+        logger.info("Reviewing %s (%d %s)", display_path, function_count, noun)
 
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=human_prompt),
-        ]
-        for _ in range(samples):
-            raw = llm_client.get_llm().invoke(messages)
-            findings.extend(_parse_llm_response(str(raw.content)))
+        for chunk in chunks:
+            logger.info("  └─ %s", chunk.name)
+            label = "file-level code" if chunk.name == FILE_LEVEL else f"function {chunk.name}"
+            system_prompt = loader.build_system_prompt(languages=_detect_languages([f]))
+            human_prompt = f"Review the following {label} from {display_path}:\n\n{chunk.text}"
 
-    return _dedupe_findings(findings)
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=human_prompt),
+            ]
+            chunk_findings: List[Finding] = []
+            for _ in range(samples):
+                raw = llm_client.get_llm().invoke(messages)
+                chunk_findings.extend(_parse_llm_response(str(raw.content)))
+
+            for finding in chunk_findings:
+                finding.function_name = None if chunk.name == FILE_LEVEL else chunk.name
+                if finding.line_number is not None:
+                    finding.line_number += chunk.start_line - 1
+
+            findings.extend(_dedupe_findings(chunk_findings))
+
+    return findings
 
 
 
@@ -303,6 +331,7 @@ def review_code_node(state: GraphState) -> dict:
         state["target_path"],
         state["review_mode"],
         state.get("last_modified_files", []),
+        target_file=state.get("target_file"),
     )
 
     if not files:

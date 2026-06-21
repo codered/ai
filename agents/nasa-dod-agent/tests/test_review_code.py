@@ -1,8 +1,9 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from nasa_dod_agent.chunker import FILE_LEVEL
 from nasa_dod_agent.models import Finding, Severity
-from nasa_dod_agent.nodes.review_code import _detect_languages, _run_review, review_code_node
+from nasa_dod_agent.nodes.review_code import _collect_files, _detect_languages, _run_review, review_code_node
 from nasa_dod_agent.standards_loader import StandardsLoader
 from nasa_dod_agent.state import GraphState
 
@@ -78,9 +79,9 @@ def test_run_review_sends_full_file_content_past_2000_chars(temp_project):
 
     _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
 
-    sent_messages = mock_llm_client.get_llm.return_value.invoke.call_args[0][0]
-    human_content = sent_messages[1].content
-    assert marker in human_content
+    all_calls = mock_llm_client.get_llm.return_value.invoke.call_args_list
+    human_contents = [call.args[0][1].content for call in all_calls]
+    assert any(marker.rstrip("\n") in content for content in human_contents)
 
 
 def test_run_review_calls_llm_once_per_file(temp_project):
@@ -163,3 +164,66 @@ def test_run_review_dedupes_same_finding_across_samples(temp_project):
     )
 
     assert len(findings) == 1
+
+
+def test_collect_files_returns_only_target_file_when_set(temp_project):
+    (temp_project / "a.go").write_text("package a\n")
+    (temp_project / "b.go").write_text("package b\n")
+    target_file = str(temp_project / "a.go")
+
+    files = _collect_files(str(temp_project), "full", [], target_file=target_file)
+
+    assert files == [Path(target_file)]
+
+
+def test_collect_files_globs_normally_when_no_target_file(temp_project):
+    (temp_project / "a.go").write_text("package a\n")
+
+    files = _collect_files(str(temp_project), "full", [], target_file=None)
+
+    assert files == [temp_project / "a.go"]
+
+
+def test_run_review_stamps_function_name_and_offsets_line_number(temp_project):
+    target = temp_project / "sample.go"
+    target.write_text(
+        "package sample\n"
+        "\n"
+        "func Foo() {\n"
+        "\tx := 1\n"
+        "}\n"
+    )
+
+    # Real chunk_file on this source produces TWO chunks — the "Foo" function
+    # (lines 3-5) and a "<file-level>" chunk for the "package sample\n\n"
+    # preamble — so the mock needs one response per chunk, in chunk_file's
+    # order (function chunks first, file-level last), rather than one
+    # blanket `.return_value` for every call.
+    mock_llm_client = MagicMock()
+    mock_llm_client.get_llm.return_value.invoke.side_effect = [
+        MagicMock(content=(
+            '[{"severity": "P2", "file_path": "sample.go", "rule": "R", '
+            '"description": "D", "why_fix": "W", "line_number": 2}]'
+        )),
+        MagicMock(content="[]"),
+    ]
+
+    findings = _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
+
+    assert len(findings) == 1
+    assert findings[0].function_name == "Foo"
+    assert findings[0].line_number == 4
+
+
+def test_run_review_logs_file_and_function_progress(temp_project, caplog):
+    target = temp_project / "sample.go"
+    target.write_text("package sample\n\nfunc Foo() {}\n")
+
+    mock_llm_client = MagicMock()
+    mock_llm_client.get_llm.return_value.invoke.return_value.content = "[]"
+
+    caplog.set_level("INFO")
+    _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
+
+    assert "Reviewing sample.go (1 function)" in caplog.text
+    assert "Foo" in caplog.text

@@ -14,6 +14,10 @@ class GraphState(TypedDict):
     findings: List[Finding]
     files_reviewed: List[str]
     last_modified_files: List[str]
+    # Set when the CLI was pointed at a single file rather than a
+    # directory — when present, review_code._collect_files returns just
+    # this file instead of globbing target_path.
+    target_file: Optional[str]
     # Count of fix attempts per finding, keyed by "{file_path}::{rule}".
     # Accumulates across the whole run (never reset per-iteration), so a
     # finding that keeps coming back after being patched (e.g. the review
