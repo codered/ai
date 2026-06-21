@@ -663,11 +663,19 @@ def test_run_review_stamps_function_name_and_offsets_line_number(temp_project):
         "}\n"
     )
 
+    # Real chunk_file on this source produces TWO chunks — the "Foo" function
+    # (lines 3-5) and a "<file-level>" chunk for the "package sample\n\n"
+    # preamble — so the mock needs one response per chunk, in chunk_file's
+    # order (function chunks first, file-level last), rather than one
+    # blanket `.return_value` for every call.
     mock_llm_client = MagicMock()
-    mock_llm_client.get_llm.return_value.invoke.return_value.content = (
-        '[{"severity": "P2", "file_path": "sample.go", "rule": "R", '
-        '"description": "D", "why_fix": "W", "line_number": 2}]'
-    )
+    mock_llm_client.get_llm.return_value.invoke.side_effect = [
+        MagicMock(content=(
+            '[{"severity": "P2", "file_path": "sample.go", "rule": "R", '
+            '"description": "D", "why_fix": "W", "line_number": 2}]'
+        )),
+        MagicMock(content="[]"),
+    ]
 
     findings = _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
 
@@ -843,7 +851,7 @@ def review_code_node(state: GraphState) -> dict:
 
 - [ ] **Step 6: Fix the pre-existing test whose assumptions chunking invalidates**
 
-`test_run_review_sends_full_file_content_past_2000_chars` (already in `tests/test_review_code.py`) currently inspects `mock_llm_client.get_llm.return_value.invoke.call_args` (the *last* call only). With chunking, the marker function and the 60 padding-comment lines become two separate chunks reviewed in two separate calls, and the marker's function chunk is *not* guaranteed to be the last call. Replace the test body's last two lines:
+`test_run_review_sends_full_file_content_past_2000_chars` (already in `tests/test_review_code.py`) currently inspects `mock_llm_client.get_llm.return_value.invoke.call_args` (the *last* call only). On the real chunker, this fixture's 60 padding `//` comment lines have no blank line between them or before `func DuplicateMarker() {}`, so `_with_leading_comments` absorbs all of them into the function's own chunk — there ends up being exactly one chunk and one call here, not two — but inspecting only "the last call" is still fragile if that ever changes, so switch to scanning every call regardless of count. Separately, a chunk's `.text` is sliced by tree-sitter byte offsets ending at the function node's closing brace, which excludes the trailing newline that follows it in the source — so the chunk text ends in `...DuplicateMarker() {}` with no trailing `\n`, while the test's `marker` constant has one; strip it before comparing. Replace the test body's last two lines:
 
 ```python
     sent_messages = mock_llm_client.get_llm.return_value.invoke.call_args[0][0]
@@ -856,7 +864,7 @@ with:
 ```python
     all_calls = mock_llm_client.get_llm.return_value.invoke.call_args_list
     human_contents = [call.args[0][1].content for call in all_calls]
-    assert any(marker in content for content in human_contents)
+    assert any(marker.rstrip("\n") in content for content in human_contents)
 ```
 
 - [ ] **Step 7: Run tests to verify they pass**
