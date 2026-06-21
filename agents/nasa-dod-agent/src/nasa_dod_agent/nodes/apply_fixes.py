@@ -1,5 +1,6 @@
 """Node 4: apply_fixes — atomically apply patches to disk with backups."""
 
+import logging
 import shutil
 import subprocess
 import sys
@@ -7,6 +8,8 @@ from pathlib import Path
 
 from nasa_dod_agent.fix_parser import FixParser
 from nasa_dod_agent.state import GraphState
+
+logger = logging.getLogger(__name__)
 
 _BUILD_TIMEOUT_SECONDS = 60
 
@@ -115,6 +118,8 @@ def apply_fixes_node(state: GraphState) -> dict:
             if not file_path.exists():
                 errors.append(f"File not found: {file_path}")
                 continue
+
+            logger.info("Applying patch to %s", file_path.name)
 
             # Back up only on this file's first patch in the batch — a
             # second patch to the same file must not overwrite the backup
