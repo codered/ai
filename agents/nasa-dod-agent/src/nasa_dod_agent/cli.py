@@ -1,5 +1,6 @@
 """Click CLI entry point for nasa-dod-agent."""
 
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -38,6 +39,12 @@ def _archive_checkpoints(checkpoint_dir: Path) -> None:
             item.unlink()
 
 
+def _target_dir(project_path: Path) -> Path:
+    """Where .nasa-dod-agent/ lives: the path itself if it's a directory,
+    or its parent directory if it's a single file."""
+    return project_path.parent if project_path.is_file() else project_path
+
+
 _STOP_MESSAGES = {
     "rubric_passed": "Rubric passed: YES",
     "max_iterations": (
@@ -68,20 +75,22 @@ def _stop_message(stop_reason: str | None) -> str:
 @click.group()
 def main():
     """NASA/DoD Deep Agent — iterative code review with auto-fix."""
-    pass
+    logging.basicConfig(level=logging.INFO, format="%(message)s", force=True)
 
 
 @main.command()
-@click.argument("path", type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.argument("path", type=click.Path(exists=True, file_okay=True, dir_okay=True))
 @click.option("--full", is_flag=True, help="Force full scan, ignore checkpoints")
 @click.option("--max-rounds", type=int, default=None, help="Override max_iterations")
 @click.option("--dry-run", is_flag=True, help="Generate fixes but don't write")
 @click.option("--reset", is_flag=True, help="Delete checkpoint, start fresh")
 @click.option("--no-interactive", is_flag=True, help="Skip resume prompt")
 def review(path, full, max_rounds, dry_run, reset, no_interactive):
-    """Run the NASA/DOD review loop on a directory."""
+    """Run the NASA/DOD review loop on a directory or a single file."""
     project_path = Path(path)
-    config_dir = project_path / ".nasa-dod-agent"
+    target_dir = _target_dir(project_path)
+    target_file = str(project_path.absolute()) if project_path.is_file() else None
+    config_dir = target_dir / ".nasa-dod-agent"
     checkpoint_dir = str(config_dir / "checkpoints")
 
     checkpoint_exists = (
@@ -99,7 +108,7 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
         return
 
     try:
-        config = ConfigLoader.load(project_path)
+        config = ConfigLoader.load(target_dir)
     except ValidationError as e:
         click.echo(f"Invalid {config_dir / 'config.yaml'}:")
         for err in e.errors():
@@ -108,7 +117,7 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
         raise click.Abort()
 
     if config is None:
-        config = ConfigLoader.init_config(project_path)
+        config = ConfigLoader.init_config(target_dir)
         click.echo(f"Created default config at {config_dir / 'config.yaml'}")
 
     if max_rounds is not None:
@@ -119,7 +128,8 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
         raise click.Abort()
 
     state: GraphState = {
-        "target_path": str(project_path.absolute()),
+        "target_path": str(target_dir.absolute()),
+        "target_file": target_file,
         "review_mode": "full" if full or not checkpoint_exists else "incremental",
         "iteration": 0,
         "max_iterations": config.max_iterations,
@@ -160,10 +170,10 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
 
 
 @main.command()
-@click.argument("path", type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.argument("path", type=click.Path(exists=True, file_okay=True, dir_okay=True))
 def restore(path):
     """Undo all agent changes (restore .bak files)."""
-    project_path = Path(path)
+    project_path = _target_dir(Path(path))
     backup_dir = project_path / ".nasa-dod-agent" / "backups"
 
     if not backup_dir.exists():
@@ -185,10 +195,10 @@ def restore(path):
 
 
 @main.command()
-@click.argument("path", type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.argument("path", type=click.Path(exists=True, file_okay=True, dir_okay=True))
 def status(path):
     """Show current review state."""
-    project_path = Path(path)
+    project_path = _target_dir(Path(path))
     state_file = project_path / ".nasa-dod-agent" / "state.json"
     if state_file.exists():
         import json
