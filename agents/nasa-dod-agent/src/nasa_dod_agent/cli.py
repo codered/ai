@@ -48,6 +48,11 @@ _STOP_MESSAGES = {
         "Rubric NOT met — no fixable findings. Remaining findings are all "
         "below fix_threshold. Adjust fix_threshold or max_pX in config.yaml."
     ),
+    "max_fix_attempts": (
+        "Rubric NOT met — gave up on one or more findings after repeated "
+        "failed fix attempts (the model kept producing patches that didn't "
+        "resolve them). These likely need manual review."
+    ),
 }
 
 
@@ -116,6 +121,7 @@ def review(path, full, max_rounds, dry_run, reset, no_interactive):
         "findings": [],
         "files_reviewed": [],
         "last_modified_files": [],
+        "fix_attempts": {},
         "config": config,
         "rubric_passed": False,
         "stop_reason": None,

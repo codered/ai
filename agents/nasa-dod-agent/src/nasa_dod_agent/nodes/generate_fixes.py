@@ -12,9 +12,19 @@ from nasa_dod_agent.state import GraphState
 
 SEVERITY_ORDER = {Severity.P0: 0, Severity.P1: 1, Severity.P2: 2, Severity.P3: 3}
 
+# A weak/local model can give inconsistent re-review verdicts and keep
+# reporting the same finding as unresolved no matter how many times it's
+# patched. Past that many attempts at the same (file, rule), stop retrying
+# it rather than burning the rest of max_iterations on one stuck finding.
+MAX_FIX_ATTEMPTS = 2
+
 
 def _should_fix(finding: Finding, threshold: int) -> bool:
     return SEVERITY_ORDER[finding.severity] <= threshold
+
+
+def _finding_key(finding: Finding) -> str:
+    return f"{finding.file_path}::{finding.rule}"
 
 
 def _resolve(file_path: str, target_path: Path) -> Path:
@@ -115,13 +125,30 @@ def _generate_patches(
 def generate_fixes_node(state: GraphState) -> dict:
     """Generate patches for findings above the fix threshold."""
     threshold = state["config"].fix_threshold
-    findings = [f for f in state.get("findings", []) if _should_fix(f, threshold)]
+    fixable = [f for f in state.get("findings", []) if _should_fix(f, threshold)]
 
-    if not findings:
+    if not fixable:
         # Nothing left to fix at this threshold, but the rubric is still
         # failing (that's the only way we'd get here) — looping further
         # would never change anything, so say so and stop.
         return {"patches": [], "patch_errors": [], "stop_reason": "no_fixable_findings"}
+
+    fix_attempts = dict(state.get("fix_attempts", {}))
+    findings = [f for f in fixable if fix_attempts.get(_finding_key(f), 0) < MAX_FIX_ATTEMPTS]
+
+    if not findings:
+        # Every fixable finding has already been retried past the cap —
+        # the model isn't converging on these, so stop instead of spinning
+        # through the rest of max_iterations on findings that won't budge.
+        return {
+            "patches": [],
+            "patch_errors": [],
+            "stop_reason": "max_fix_attempts",
+        }
+
+    for f in findings:
+        key = _finding_key(f)
+        fix_attempts[key] = fix_attempts.get(key, 0) + 1
 
     llm = LLMClient.from_env(state["config"])
     target_path = Path(state["target_path"])
@@ -131,4 +158,5 @@ def generate_fixes_node(state: GraphState) -> dict:
     return {
         "patches": patches,
         "patch_errors": [f"{e.file_path}: {e.error_message}" for e in parse_errors],
+        "fix_attempts": fix_attempts,
     }

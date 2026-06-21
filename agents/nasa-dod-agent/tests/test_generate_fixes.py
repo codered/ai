@@ -5,7 +5,7 @@ from nasa_dod_agent.models import Finding, Patch, RubricConfig, Severity
 from nasa_dod_agent.nodes.generate_fixes import _generate_patches, generate_fixes_node
 
 
-def make_state(findings):
+def make_state(findings, fix_attempts=None):
     return {
         "target_path": ".",
         "review_mode": "full",
@@ -20,6 +20,7 @@ def make_state(findings):
         "patch_errors": [],
         "files_modified": [],
         "backup_paths": [],
+        "fix_attempts": fix_attempts or {},
         "p0_count": 0, "p1_count": 0, "p2_count": 0, "p3_count": 0,
     }
 
@@ -170,3 +171,58 @@ def test_generate_fixes_node_passes_patch_errors_as_feedback():
 
     args, _ = mock_gen.call_args
     assert args[3] == ["divide.go: undefined: errors"]
+
+
+def test_generate_fixes_node_gives_up_after_max_attempts():
+    """Regression test: a real run against a weak local model re-reviewed
+    already-fixed files and kept reporting the same finding as still
+    present, so the agent regenerated patches for it every iteration until
+    max_iterations — burning the whole budget on one stuck finding instead
+    of stopping and saying so. After MAX_FIX_ATTEMPTS failed attempts at the
+    same (file, rule), the agent must stop trying and report why instead of
+    spinning until max_iterations.
+    """
+    finding = _finding(Severity.P0)
+    state = make_state([finding], fix_attempts={"a.py::R": 2})
+
+    with patch("nasa_dod_agent.nodes.generate_fixes._generate_patches") as mock_gen:
+        result = generate_fixes_node(state)
+
+    mock_gen.assert_not_called()
+    assert result["patches"] == []
+    assert result["stop_reason"] == "max_fix_attempts"
+
+
+def test_generate_fixes_node_increments_attempt_count():
+    finding = _finding(Severity.P0)
+    state = make_state([finding])
+
+    with patch("nasa_dod_agent.nodes.generate_fixes._generate_patches") as mock_gen, \
+         patch("nasa_dod_agent.nodes.generate_fixes.LLMClient") as mock_llm:
+        mock_gen.return_value = ([], [])
+        mock_llm.from_env.return_value = MagicMock()
+        result = generate_fixes_node(state)
+
+    assert result["fix_attempts"] == {"a.py::R": 1}
+
+
+def test_generate_fixes_node_only_sends_unexhausted_findings_to_llm():
+    stuck = Finding(
+        severity=Severity.P0, file_path="a.py", line_number=1, rule="R",
+        description="D", why_fix="W",
+    )
+    fresh = Finding(
+        severity=Severity.P0, file_path="b.py", line_number=1, rule="S",
+        description="D2", why_fix="W2",
+    )
+    state = make_state([stuck, fresh], fix_attempts={"a.py::R": 2})
+
+    with patch("nasa_dod_agent.nodes.generate_fixes._generate_patches") as mock_gen, \
+         patch("nasa_dod_agent.nodes.generate_fixes.LLMClient") as mock_llm:
+        mock_gen.return_value = ([], [])
+        mock_llm.from_env.return_value = MagicMock()
+        result = generate_fixes_node(state)
+
+    sent_findings = mock_gen.call_args[0][0]
+    assert sent_findings == [fresh]
+    assert result["fix_attempts"] == {"a.py::R": 2, "b.py::S": 1}

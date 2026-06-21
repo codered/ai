@@ -14,12 +14,20 @@ class GraphState(TypedDict):
     findings: List[Finding]
     files_reviewed: List[str]
     last_modified_files: List[str]
+    # Count of fix attempts per finding, keyed by "{file_path}::{rule}".
+    # Accumulates across the whole run (never reset per-iteration), so a
+    # finding that keeps coming back after being patched (e.g. the review
+    # model gives inconsistent verdicts) can be capped instead of retried
+    # every iteration until max_iterations.
+    fix_attempts: dict[str, int]
 
     config: RubricConfig
     rubric_passed: bool
-    # Why the loop stopped: "rubric_passed", "max_iterations", or
+    # Why the loop stopped: "rubric_passed", "max_iterations",
     # "no_fixable_findings" (remaining findings are all below fix_threshold,
-    # so no patches were ever generated for them). None while still running.
+    # so no patches were ever generated for them), or "max_fix_attempts"
+    # (every fixable finding hit MAX_FIX_ATTEMPTS without resolving). None
+    # while still running.
     stop_reason: Optional[str]
     p0_count: int
     p1_count: int
