@@ -167,6 +167,7 @@ def generate_fixes_node(state: GraphState) -> dict:
         # even though no single chunk hit its own per-chunk cap — likely
         # many small findings adding up. Stop rather than keep going.
         return {"patches": [], "patch_errors": [], "stop_reason": "max_total_fix_attempts"}
+    findings.sort(key=lambda f: SEVERITY_ORDER[f.severity])
     if len(findings) > remaining_budget:
         findings = findings[:remaining_budget]
 

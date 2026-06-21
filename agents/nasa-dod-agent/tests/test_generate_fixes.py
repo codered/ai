@@ -301,6 +301,38 @@ def test_generate_fixes_node_trims_batch_to_remaining_total_budget():
     assert sum(result["fix_attempts"].values()) == 5
 
 
+def test_generate_fixes_node_trim_keeps_highest_severity_finding():
+    """When the remaining budget can only cover one finding, the trim
+    must keep the highest-severity finding regardless of discovery
+    order — not just whatever happened to come first in the list."""
+    p3_finding = Finding(
+        severity=Severity.P3, file_path="low.py", rule="R",
+        description="low severity", why_fix="W", function_name="low_fn",
+    )
+    p0_finding = Finding(
+        severity=Severity.P0, file_path="high.py", rule="R",
+        description="high severity", why_fix="W", function_name="high_fn",
+    )
+    # P3 comes first in discovery order, P0 second — proves the trim
+    # isn't just keeping "whatever came first".
+    findings = [p3_finding, p0_finding]
+    config = RubricConfig(fix_threshold=3, max_total_fix_attempts=5)
+    state = make_state(findings)
+    state["config"] = config
+    state["fix_attempts"] = {"other.py::None::X": 4}  # 1 attempt of budget left
+
+    with patch("nasa_dod_agent.nodes.generate_fixes._generate_patches") as mock_gen, \
+         patch("nasa_dod_agent.nodes.generate_fixes.LLMClient") as mock_llm:
+        mock_gen.return_value = ([], [])
+        mock_llm.from_env.return_value = MagicMock()
+        result = generate_fixes_node(state)
+
+    sent_findings = mock_gen.call_args[0][0]
+    assert len(sent_findings) == 1
+    assert sent_findings[0] is p0_finding
+    assert sum(result["fix_attempts"].values()) == 5
+
+
 def test_generate_fixes_node_skips_only_the_exhausted_function_in_a_shared_file():
     """Two functions in the SAME file, same rule: one has used up its
     per-chunk budget, the other hasn't. Only the exhausted one should be
