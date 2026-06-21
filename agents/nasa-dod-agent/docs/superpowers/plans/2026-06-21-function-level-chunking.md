@@ -739,7 +739,7 @@ import logging
 And add this import alongside the other `nasa_dod_agent` imports:
 
 ```python
-from nasa_dod_agent.chunker import chunk_file
+from nasa_dod_agent.chunker import FILE_LEVEL, chunk_file
 ```
 
 2. Add a module-level logger right after the imports, before `_extract_findings`:
@@ -809,7 +809,7 @@ def _run_review(
     return findings
 ```
 
-(This replaces the old whole-file loop body and removes the final module-level `_dedupe_findings(findings)` call — dedup now happens per chunk, right after that chunk's samples are collected, because two *different* chunks can legitimately produce findings sharing the same `rule` string and must not be collapsed together. Need `from nasa_dod_agent.chunker import FILE_LEVEL` added to the import list alongside `chunk_file`.)
+(This replaces the old whole-file loop body and removes the final module-level `_dedupe_findings(findings)` call — dedup now happens per chunk, right after that chunk's samples are collected, because two *different* chunks can legitimately produce findings sharing the same `rule` string and must not be collapsed together.)
 
 4. Update `review_code_node` (currently lines 300–321) to pass `target_file` through:
 
