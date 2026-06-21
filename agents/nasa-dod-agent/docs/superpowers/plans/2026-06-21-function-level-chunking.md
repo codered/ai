@@ -1525,9 +1525,13 @@ Add to `tests/test_cli.py`:
 from nasa_dod_agent.cli import status
 
 
-def test_review_accepts_a_single_file_path(temp_project):
+def test_review_accepts_a_single_file_path(temp_project, monkeypatch):
     target = temp_project / "main.py"
     target.write_text("x = 1\n")
+    # Must be deterministic regardless of the ambient shell's env — this
+    # test asserts on the missing-key error path, so the key must be
+    # actually absent here even if the developer's own shell has one set.
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     runner = CliRunner()
     result = runner.invoke(main, ["review", str(target), "--no-interactive"])
