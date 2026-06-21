@@ -53,6 +53,11 @@ _STOP_MESSAGES = {
         "failed fix attempts (the model kept producing patches that didn't "
         "resolve them). These likely need manual review."
     ),
+    "max_total_fix_attempts": (
+        "Rubric NOT met — hit the total fix-attempt budget for this run "
+        "(max_total_fix_attempts in config.yaml). Re-run to continue "
+        "fixing the rest, or raise the budget."
+    ),
 }
 
 

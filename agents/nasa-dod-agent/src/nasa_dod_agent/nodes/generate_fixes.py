@@ -1,22 +1,21 @@
 """Node 3: generate_fixes — ask LLM to produce patches for fixable findings."""
 
+import logging
 from pathlib import Path
 from typing import List, Tuple
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from nasa_dod_agent.chunker import FILE_LEVEL, chunk_file
 from nasa_dod_agent.fix_parser import FixParser
 from nasa_dod_agent.llm_client import LLMClient
 from nasa_dod_agent.models import Finding, Patch, PatchError, Severity
+from nasa_dod_agent.nodes.review_code import EXTENSION_LANGUAGES
 from nasa_dod_agent.state import GraphState
 
-SEVERITY_ORDER = {Severity.P0: 0, Severity.P1: 1, Severity.P2: 2, Severity.P3: 3}
+logger = logging.getLogger(__name__)
 
-# A weak/local model can give inconsistent re-review verdicts and keep
-# reporting the same finding as unresolved no matter how many times it's
-# patched. Past that many attempts at the same (file, rule), stop retrying
-# it rather than burning the rest of max_iterations on one stuck finding.
-MAX_FIX_ATTEMPTS = 2
+SEVERITY_ORDER = {Severity.P0: 0, Severity.P1: 1, Severity.P2: 2, Severity.P3: 3}
 
 
 def _should_fix(finding: Finding, threshold: int) -> bool:
@@ -24,7 +23,7 @@ def _should_fix(finding: Finding, threshold: int) -> bool:
 
 
 def _finding_key(finding: Finding) -> str:
-    return f"{finding.file_path}::{finding.rule}"
+    return f"{finding.file_path}::{finding.function_name}::{finding.rule}"
 
 
 def _resolve(file_path: str, target_path: Path) -> Path:
@@ -32,23 +31,38 @@ def _resolve(file_path: str, target_path: Path) -> Path:
     return p if p.is_absolute() else target_path / p
 
 
-def _file_contents_context(findings: List[Finding], target_path: Path) -> str:
-    """Show the LLM the real, current content of each affected file.
+def _chunk_text_for_finding(finding: Finding, path: Path) -> str:
+    """The exact text of the function (or file-level code) a finding
+    belongs to. Falls back to the whole file if the chunk no longer
+    exists — e.g. a prior patch renamed/removed the function."""
+    language = EXTENSION_LANGUAGES.get(path.suffix, "")
+    chunks = chunk_file(path, language)
+    target_name = finding.function_name or FILE_LEVEL
+    for chunk in chunks:
+        if chunk.name == target_name:
+            return chunk.text
+    return path.read_text()
 
-    Without this, the model has only the finding's one-line description to
-    go on and has to guess at exact source text for the Search block —
-    which routinely doesn't match, and gives it no way to know what's
-    already imported or already there.
+
+def _file_contents_context(findings: List[Finding], target_path: Path) -> str:
+    """Show the LLM the real, current content of each finding's function
+    (or file-level code), not the finding's one-line description — which
+    routinely doesn't match exact source text and gives no way to know
+    what's already imported or already there.
     """
     context = ""
     seen = set()
     for f in findings:
-        if f.file_path in seen:
+        key = (f.file_path, f.function_name)
+        if key in seen:
             continue
-        seen.add(f.file_path)
+        seen.add(key)
         path = _resolve(f.file_path, target_path)
-        if path.exists():
-            context += f"\n--- {f.file_path} ---\n{path.read_text()}\n"
+        if not path.exists():
+            continue
+        chunk_text = _chunk_text_for_finding(f, path)
+        label = f.file_path if f.function_name is None else f"{f.file_path}::{f.function_name}"
+        context += f"\n--- {label} ---\n{chunk_text}\n"
     return context
 
 
@@ -123,8 +137,10 @@ def _generate_patches(
 
 
 def generate_fixes_node(state: GraphState) -> dict:
-    """Generate patches for findings above the fix threshold."""
-    threshold = state["config"].fix_threshold
+    """Generate patches for findings above the fix threshold, bounded by
+    a per-chunk retry cap and a global total-attempts cap."""
+    config = state["config"]
+    threshold = config.fix_threshold
     fixable = [f for f in state.get("findings", []) if _should_fix(f, threshold)]
 
     if not fixable:
@@ -134,23 +150,35 @@ def generate_fixes_node(state: GraphState) -> dict:
         return {"patches": [], "patch_errors": [], "stop_reason": "no_fixable_findings"}
 
     fix_attempts = dict(state.get("fix_attempts", {}))
-    findings = [f for f in fixable if fix_attempts.get(_finding_key(f), 0) < MAX_FIX_ATTEMPTS]
+    per_chunk_cap = config.max_fix_attempts_per_chunk
+    findings = [f for f in fixable if fix_attempts.get(_finding_key(f), 0) < per_chunk_cap]
 
     if not findings:
-        # Every fixable finding has already been retried past the cap —
-        # the model isn't converging on these, so stop instead of spinning
-        # through the rest of max_iterations on findings that won't budge.
-        return {
-            "patches": [],
-            "patch_errors": [],
-            "stop_reason": "max_fix_attempts",
-        }
+        # Every fixable finding has already been retried past its own
+        # cap — the model isn't converging on these, so stop instead of
+        # spinning through the rest of max_iterations on findings that
+        # won't budge.
+        return {"patches": [], "patch_errors": [], "stop_reason": "max_fix_attempts"}
+
+    total_attempts_so_far = sum(fix_attempts.values())
+    remaining_budget = config.max_total_fix_attempts - total_attempts_so_far
+    if remaining_budget <= 0:
+        # The whole run has already spent its total fix-attempt budget,
+        # even though no single chunk hit its own per-chunk cap — likely
+        # many small findings adding up. Stop rather than keep going.
+        return {"patches": [], "patch_errors": [], "stop_reason": "max_total_fix_attempts"}
+    if len(findings) > remaining_budget:
+        findings = findings[:remaining_budget]
 
     for f in findings:
         key = _finding_key(f)
         fix_attempts[key] = fix_attempts.get(key, 0) + 1
+        logger.info(
+            "Fixing %s::%s (%s: %s)",
+            f.file_path, f.function_name or FILE_LEVEL, f.severity.value, f.description,
+        )
 
-    llm = LLMClient.from_env(state["config"])
+    llm = LLMClient.from_env(config)
     target_path = Path(state["target_path"])
     previous_errors = state.get("patch_errors", [])
     patches, parse_errors = _generate_patches(findings, llm, target_path, previous_errors)
