@@ -16,4 +16,4 @@ def test_from_env_defaults():
         client = LLMClient(api_key="x")
         assert client.model == "gpt-4o"
         assert client.base_url == "https://api.openai.com/v1"
-        assert client.temperature == 0.2
+        assert client.temperature == 0.0

@@ -19,3 +19,15 @@ def test_init_config_creates_file(temp_project):
     config = ConfigLoader.init_config(temp_project)
     assert (temp_project / ".nasa-dod-agent" / "config.yaml").exists()
     assert config.max_p0 == 0
+
+def test_init_config_writes_review_samples(temp_project):
+    ConfigLoader.init_config(temp_project)
+    config_path = temp_project / ".nasa-dod-agent" / "config.yaml"
+    assert "review_samples: 1" in config_path.read_text()
+
+def test_load_review_samples_from_llm_section(temp_project):
+    config_path = temp_project / ".nasa-dod-agent" / "config.yaml"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text("llm:\n  review_samples: 3\n")
+    loaded = ConfigLoader.load(temp_project)
+    assert loaded.review_samples == 3

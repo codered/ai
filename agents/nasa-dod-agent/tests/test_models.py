@@ -20,3 +20,15 @@ def test_rubric_config_defaults():
     assert config.max_p0 == 0
     assert config.max_p1 == 2
     assert config.fix_threshold == 1
+
+
+def test_rubric_config_low_temperature_default():
+    """Regression test: a real run showed the same file, reviewed twice at
+    temperature=0.2, non-deterministically returning 2 findings one call
+    and 0 the next. Default to 0 to minimize that sampling noise."""
+    assert RubricConfig().temperature == 0.0
+
+
+def test_rubric_config_review_samples_default():
+    config = RubricConfig()
+    assert config.review_samples == 1

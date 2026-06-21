@@ -54,8 +54,16 @@ class RubricConfig(BaseModel):
         description="0=fix none, 1=fix P0+P1, 2=fix P0+P1+P2, 3=fix all"
     )
     max_iterations: int = Field(default=10, ge=1)
-    temperature: float = Field(default=0.2, ge=0.0, le=2.0)
+    temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     max_tokens: int = Field(default=4096, ge=1)
+    review_samples: int = Field(
+        default=1, ge=1,
+        description=(
+            "Times to review each file; findings are unioned across "
+            "samples (deduped by file+rule) to catch issues a noisy model "
+            "only reports on some of its attempts."
+        ),
+    )
 
 
 class PatchError(BaseModel):

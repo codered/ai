@@ -2,7 +2,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from nasa_dod_agent.models import Finding, Severity
-from nasa_dod_agent.nodes.review_code import _detect_languages, review_code_node
+from nasa_dod_agent.nodes.review_code import _detect_languages, _run_review, review_code_node
+from nasa_dod_agent.standards_loader import StandardsLoader
 from nasa_dod_agent.state import GraphState
 
 
@@ -57,3 +58,108 @@ def test_review_code_node_collects_findings(temp_project):
     assert len(result["findings"]) == 1
     assert result["findings"][0].severity == Severity.P0
     assert any("main.py" in f for f in result["files_reviewed"])
+
+
+def test_run_review_sends_full_file_content_past_2000_chars(temp_project):
+    """Regression test: a real run against a 3300-byte test file found zero
+    issues even though the file had a duplicate function declaration (a Go
+    vet/build error) past the 2000-char mark — because _run_review sliced
+    file content to f.read_text()[:2000] before sending it to the LLM, so
+    the duplicate was silently never shown to the model at all.
+    """
+    target = temp_project / "big.go"
+    filler = "// padding line to push past the old 2000-char cutoff\n" * 60
+    marker = "func DuplicateMarker() {}\n"
+    target.write_text(filler + marker)
+    assert len(filler) > 2000
+
+    mock_llm_client = MagicMock()
+    mock_llm_client.get_llm.return_value.invoke.return_value.content = "[]"
+
+    _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
+
+    sent_messages = mock_llm_client.get_llm.return_value.invoke.call_args[0][0]
+    human_content = sent_messages[1].content
+    assert marker in human_content
+
+
+def test_run_review_calls_llm_once_per_file(temp_project):
+    """Regression test: a real run batched two unrelated files into one
+    review prompt and the model returned zero findings, even though it
+    reliably caught the same issue when shown the offending file alone.
+    Reviewing one file per LLM call avoids that cross-file dilution.
+    """
+    file_a = temp_project / "a.go"
+    file_a.write_text("package a\n")
+    file_b = temp_project / "b.go"
+    file_b.write_text("package b\n")
+
+    mock_llm_client = MagicMock()
+    mock_llm_client.get_llm.return_value.invoke.side_effect = [
+        MagicMock(
+            content='[{"severity": "P2", "file_path": "a.go", "rule": "R", '
+            '"description": "D", "why_fix": "W"}]'
+        ),
+        MagicMock(content="[]"),
+    ]
+
+    findings = _run_review(
+        [file_a, file_b], mock_llm_client, StandardsLoader(), temp_project
+    )
+
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 2
+    assert len(findings) == 1
+    assert findings[0].file_path == "a.go"
+
+
+def test_run_review_samples_each_file_n_times(temp_project):
+    """Regression test: the same file reviewed twice at temperature=0.2
+    returned 2 findings on one call and 0 on the next — pure LLM sampling
+    noise on identical input. Sampling each file N times and unioning
+    findings means a finding only needs to surface on ONE of N attempts.
+    """
+    target = temp_project / "a.go"
+    target.write_text("package a\n")
+
+    mock_llm_client = MagicMock()
+    mock_llm_client.get_llm.return_value.invoke.side_effect = [
+        MagicMock(content="[]"),
+        MagicMock(
+            content='[{"severity": "P2", "file_path": "a.go", "rule": "R", '
+            '"description": "D", "why_fix": "W"}]'
+        ),
+        MagicMock(content="[]"),
+    ]
+
+    findings = _run_review(
+        [target], mock_llm_client, StandardsLoader(), temp_project, samples=3
+    )
+
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 3
+    assert len(findings) == 1
+    assert findings[0].rule == "R"
+
+
+def test_run_review_dedupes_same_finding_across_samples(temp_project):
+    """A finding reported by more than one sample for the same file must
+    count once, not N times — otherwise severity counts and fix-attempt
+    tracking would be inflated by how many samples happened to agree.
+    """
+    target = temp_project / "a.go"
+    target.write_text("package a\n")
+
+    same_finding_json = (
+        '[{"severity": "P0", "file_path": "a.go", "rule": "R", '
+        '"description": "D", "why_fix": "W"}]'
+    )
+    mock_llm_client = MagicMock()
+    mock_llm_client.get_llm.return_value.invoke.side_effect = [
+        MagicMock(content=same_finding_json),
+        MagicMock(content=same_finding_json),
+    ]
+
+    findings = _run_review(
+        [target], mock_llm_client, StandardsLoader(), temp_project, samples=2
+    )
+
+    assert len(findings) == 1

@@ -237,29 +237,62 @@ def _display_path(f: Path, base_path: Path) -> str:
         return str(f)
 
 
+def _dedupe_findings(findings: List[Finding]) -> List[Finding]:
+    """Keep one Finding per (file_path, rule), first-seen wins.
+
+    Multiple review samples of the same file legitimately report the same
+    real finding more than once — that must count once, not N times.
+    """
+    seen: dict[tuple[str, str], Finding] = {}
+    for f in findings:
+        key = (f.file_path, f.rule)
+        if key not in seen:
+            seen[key] = f
+    return list(seen.values())
+
+
 def _run_review(
-    files: List[Path], llm_client: LLMClient, loader: StandardsLoader, base_path: Path
+    files: List[Path],
+    llm_client: LLMClient,
+    loader: StandardsLoader,
+    base_path: Path,
+    samples: int = 1,
 ) -> List[Finding]:
-    """Call LLM to review the collected files."""
-    if not files:
-        return []
+    """Call LLM to review the collected files, one file per call.
 
-    # Build context: file paths + small content summaries
-    file_context = ""
+    A combined, all-files-in-one-prompt review used to be a single LLM
+    call, but a real run showed that batching even two small, unrelated
+    files into one prompt made the model report zero findings — even
+    though it reliably caught the exact same issue when shown the
+    offending file alone. Reviewing one file per call costs more calls but
+    avoids that cross-file dilution.
+
+    ``samples`` reviews each file that many times and unions the results
+    (deduped) — a real run showed the same file, same prompt, returning 2
+    findings on one call and 0 on the next at temperature 0.2, so a single
+    sample isn't reliable evidence of a clean file on a noisy model.
+    """
+    findings: List[Finding] = []
     for f in files:
-        content = f.read_text()[:2000]  # first 2000 chars per file
-        file_context += f"\n--- {_display_path(f, base_path)} ---\n{content}\n"
+        # Full content: a prior 2000-char-per-file cap silently hid the
+        # tail of any file longer than that from the reviewer — a real run
+        # missed a duplicate function declaration (a Go vet error) sitting
+        # past the cutoff and reported zero findings.
+        content = f.read_text()
+        file_context = f"\n--- {_display_path(f, base_path)} ---\n{content}\n"
 
-    system_prompt = loader.build_system_prompt(languages=_detect_languages(files))
-    human_prompt = f"Review the following files:\n{file_context}"
+        system_prompt = loader.build_system_prompt(languages=_detect_languages([f]))
+        human_prompt = f"Review the following file:\n{file_context}"
 
-    messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=human_prompt),
-    ]
-    raw = llm_client.get_llm().invoke(messages)
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_prompt),
+        ]
+        for _ in range(samples):
+            raw = llm_client.get_llm().invoke(messages)
+            findings.extend(_parse_llm_response(str(raw.content)))
 
-    return _parse_llm_response(str(raw.content))
+    return _dedupe_findings(findings)
 
 
 
@@ -277,7 +310,8 @@ def review_code_node(state: GraphState) -> dict:
 
     llm = LLMClient.from_env(state["config"])
     loader = StandardsLoader()
-    findings = _run_review(files, llm, loader, Path(state["target_path"]))
+    samples = state["config"].review_samples
+    findings = _run_review(files, llm, loader, Path(state["target_path"]), samples=samples)
 
     files_reviewed = list(set(state.get("files_reviewed", []) + [str(f) for f in files]))
 
