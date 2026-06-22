@@ -320,6 +320,37 @@ def _run_review(
 
             findings.extend(_dedupe_findings(chunk_findings))
 
+        # Per-chunk review is blind to cross-function issues — e.g. two
+        # functions sharing the same name (a real Go vet "redeclared"
+        # error) — since each chunk is reviewed in total isolation, with
+        # no visibility into any other function in the file. A real run
+        # confirmed the gap: chunking correctly split two identically-
+        # named functions into two separate chunks, but neither chunk's
+        # review could flag the collision. One whole-file pass restores
+        # that visibility, at the cost of one more LLM call per file.
+        logger.info("  └─ whole-file cross-function check")
+        whole_file_text = f.read_text()
+        whole_file_prompt = (
+            f"Review the following file as a whole, focusing on issues that "
+            f"span multiple functions (duplicate or colliding names, "
+            f"inconsistent patterns between functions, etc.) rather than "
+            f"issues local to one function:\n\n--- {display_path} ---\n"
+            f"{whole_file_text}\n"
+        )
+        whole_file_messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=whole_file_prompt),
+        ]
+        whole_file_findings: List[Finding] = []
+        for _ in range(samples):
+            raw = llm_client.get_llm().invoke(whole_file_messages)
+            whole_file_findings.extend(_parse_llm_response(str(raw.content)))
+
+        for finding in whole_file_findings:
+            finding.function_name = None
+
+        findings.extend(_dedupe_findings(whole_file_findings))
+
     return findings
 
 

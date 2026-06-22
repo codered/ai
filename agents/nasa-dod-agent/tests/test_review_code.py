@@ -95,20 +95,24 @@ def test_run_review_calls_llm_once_per_file(temp_project):
     file_b = temp_project / "b.go"
     file_b.write_text("package b\n")
 
+    # Each file has one per-chunk call plus one whole-file pass call, so
+    # two files = 4 total calls.
     mock_llm_client = MagicMock()
     mock_llm_client.get_llm.return_value.invoke.side_effect = [
         MagicMock(
             content='[{"severity": "P2", "file_path": "a.go", "rule": "R", '
             '"description": "D", "why_fix": "W"}]'
         ),
-        MagicMock(content="[]"),
+        MagicMock(content="[]"),  # a.go whole-file pass
+        MagicMock(content="[]"),  # b.go per-chunk
+        MagicMock(content="[]"),  # b.go whole-file pass
     ]
 
     findings = _run_review(
         [file_a, file_b], mock_llm_client, StandardsLoader(), temp_project
     )
 
-    assert mock_llm_client.get_llm.return_value.invoke.call_count == 2
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 4
     assert len(findings) == 1
     assert findings[0].file_path == "a.go"
 
@@ -122,6 +126,9 @@ def test_run_review_samples_each_file_n_times(temp_project):
     target = temp_project / "a.go"
     target.write_text("package a\n")
 
+    # samples=3 means 3 per-chunk calls plus 3 whole-file pass calls (one
+    # file, one chunk) = 6 total. Only the whole-file pass calls return "[]"
+    # so the single chunk-level finding isn't duplicated.
     mock_llm_client = MagicMock()
     mock_llm_client.get_llm.return_value.invoke.side_effect = [
         MagicMock(content="[]"),
@@ -130,13 +137,16 @@ def test_run_review_samples_each_file_n_times(temp_project):
             '"description": "D", "why_fix": "W"}]'
         ),
         MagicMock(content="[]"),
+        MagicMock(content="[]"),
+        MagicMock(content="[]"),
+        MagicMock(content="[]"),
     ]
 
     findings = _run_review(
         [target], mock_llm_client, StandardsLoader(), temp_project, samples=3
     )
 
-    assert mock_llm_client.get_llm.return_value.invoke.call_count == 3
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 6
     assert len(findings) == 1
     assert findings[0].rule == "R"
 
@@ -153,10 +163,15 @@ def test_run_review_dedupes_same_finding_across_samples(temp_project):
         '[{"severity": "P0", "file_path": "a.go", "rule": "R", '
         '"description": "D", "why_fix": "W"}]'
     )
+    # samples=2 means 2 per-chunk calls plus 2 whole-file pass calls (one
+    # file, one chunk). The whole-file pass calls return "[]" so the
+    # dedupe assertion below stays scoped to the per-chunk duplicate.
     mock_llm_client = MagicMock()
     mock_llm_client.get_llm.return_value.invoke.side_effect = [
         MagicMock(content=same_finding_json),
         MagicMock(content=same_finding_json),
+        MagicMock(content="[]"),
+        MagicMock(content="[]"),
     ]
 
     findings = _run_review(
@@ -199,12 +214,16 @@ def test_run_review_stamps_function_name_and_offsets_line_number(temp_project):
     # preamble — so the mock needs one response per chunk, in chunk_file's
     # order (function chunks first, file-level last), rather than one
     # blanket `.return_value` for every call.
+    # Two per-chunk calls (Foo, then file-level) plus one whole-file pass
+    # call (samples=1 default) = 3 total. The whole-file pass returns "[]"
+    # so it doesn't add a second finding to this test's assertions.
     mock_llm_client = MagicMock()
     mock_llm_client.get_llm.return_value.invoke.side_effect = [
         MagicMock(content=(
             '[{"severity": "P2", "file_path": "sample.go", "rule": "R", '
             '"description": "D", "why_fix": "W", "line_number": 2}]'
         )),
+        MagicMock(content="[]"),
         MagicMock(content="[]"),
     ]
 
@@ -213,6 +232,47 @@ def test_run_review_stamps_function_name_and_offsets_line_number(temp_project):
     assert len(findings) == 1
     assert findings[0].function_name == "Foo"
     assert findings[0].line_number == 4
+
+
+def test_run_review_includes_whole_file_pass_for_cross_function_issues(temp_project):
+    """Per-function chunking reviews each function in total isolation, so
+    it cannot notice that two DIFFERENT functions share the same name (a
+    real Go vet "redeclared" error) — that fact only exists at the
+    whole-file level. A real run confirmed this: chunking correctly
+    produced two separate chunks for two identically-named functions, but
+    neither chunk's review could flag the collision. A supplemental
+    whole-file pass after the per-chunk calls restores that visibility.
+    """
+    target = temp_project / "dup.go"
+    target.write_text(
+        "package sample\n"
+        "\n"
+        "func TestIsEven_maxUint() {}\n"
+        "\n"
+        "func TestIsEven_maxUint() {}\n"
+    )
+
+    mock_llm_client = MagicMock()
+    # Two function chunks + one file-level chunk (the "package sample\n\n"
+    # preamble) = 3 per-chunk calls, then one whole-file pass call = 4
+    # total. Only the LAST call (the whole-file pass) returns a finding.
+    mock_llm_client.get_llm.return_value.invoke.side_effect = [
+        MagicMock(content="[]"),
+        MagicMock(content="[]"),
+        MagicMock(content="[]"),
+        MagicMock(content=(
+            '[{"severity": "P0", "file_path": "dup.go", "rule": "R", '
+            '"description": "TestIsEven_maxUint declared twice", '
+            '"why_fix": "W"}]'
+        )),
+    ]
+
+    findings = _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
+
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 4
+    assert len(findings) == 1
+    assert findings[0].function_name is None
+    assert "declared twice" in findings[0].description
 
 
 def test_run_review_logs_file_and_function_progress(temp_project, caplog):
