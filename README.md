@@ -230,6 +230,12 @@ A LangGraph CLI that runs the NASA/DOD review loop end-to-end instead of just re
   <sub>A live run: catches an unguarded divide-by-zero, patches it, and ends with a diff of the fix. (<a href="assets/demo/nasa-dod-agent/demo.tape">regenerate with VHS</a>)</sub>
 </p>
 
+<p align="center">
+  <img src="assets/demo/nasa-dod-agent/demo-budget.gif" alt="The NASA/DoD Deep Agent reviewing a Go test file with many small findings, fixing what it can each pass, then stopping itself and reporting that it hit the total fix-attempt budget instead of grinding on indefinitely" width="800">
+  <br>
+  <sub>A real captured run hitting <code>max_total_fix_attempts</code>: the agent stops itself and says why instead of grinding on. (<a href="assets/demo/nasa-dod-agent/demo-budget.tape">regenerate with VHS</a>)</sub>
+</p>
+
 | | |
 |---|---|
 | **Install** | `cd agents/nasa-dod-agent && uv pip install -e ".[dev]"` |

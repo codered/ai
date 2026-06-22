@@ -1,0 +1,18 @@
+#!/bin/bash
+# Replays a real, captured run instead of calling the live agent.
+#
+# The transcript in transcript.txt is genuine output from a live run
+# against the iseven/ fixture (not fabricated) — it just took ~21 real
+# minutes against a live LLM, which isn't practical to re-record on demand.
+# Replaying it keeps this demo deterministic and fast to (re)generate.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+while IFS= read -r line; do
+    printf '%s\n' "$line"
+    case "$line" in
+        *"HTTP Request"*) sleep 0.05 ;;
+        "Fixing "*|"Applying patch"*) sleep 0.45 ;;
+        "Reviewing "*|"  └─"*) sleep 0.18 ;;
+        "--- Review Complete ---"|"Iterations:"*|"P0:"*|"Rubric"*) sleep 0.8 ;;
+        *) sleep 0.1 ;;
+    esac
+done < "$DIR/transcript.txt"
