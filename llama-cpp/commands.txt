@@ -1,0 +1,6 @@
+.\llama-server -hf Jackrong/Qwen3.5-2B-Claude-4.6-Opus-Reasoning-Distilled-GGUF:Q4_K_M --device cuda0 --port 8080 --host 0.0.0.0 --cache-type-k q8_0 --cache-type-v q8_0
+.\llama-server -hf Jackrong/Qwen3.5-4B-Claude-4.6-Opus-Reasoning-Distilled-v2-GGUF:Q4_K_M --device cuda0 --port 8080 --host 0.0.0.0 --cache-type-k q8_0 --cache-type-v q8_0
+.\llama-server -hf Jackrong/Qwopus3.5-4B-Coder-GGUF --device cuda0 --port 8080 --host 0.0.0.0 --n-gpu-layers 99 --no-mmproj -c 64535 -ub 512 -t 1 --cache-type-k q4_0 --cache-type-v q4_0 --flash-attn on --no-mmap --mlock
+
+.\llama-server -hf unsloth/gemma-4-E4B-it-qat-GGUF:UD-Q4_K_XL --spec-type draft-mtp --spec-draft-n-max 4 -ngl 999 -fa off --no-mmproj --host 0.0.0.0
+  
