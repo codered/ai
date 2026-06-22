@@ -250,3 +250,18 @@ def test_reverts_patch_that_breaks_js_syntax(temp_project):
     assert target.read_text() == "function add(a, b) {\n  return a + b;\n}\n"
     assert result["files_modified"] == []
     assert any("broke the build" in e for e in result["patch_errors"])
+
+
+def test_apply_fixes_logs_which_file_is_being_patched(temp_project, caplog):
+    target = temp_project / "main.py"
+    target.write_text("x = 1\n")
+
+    patch_obj = Patch(
+        file_path=str(target), description="d", search_block="x = 1", replace_block="x = 2"
+    )
+    state = {"target_path": str(temp_project), "patches": [patch_obj], "patch_errors": []}
+
+    caplog.set_level("INFO")
+    apply_fixes_node(state)
+
+    assert "main.py" in caplog.text

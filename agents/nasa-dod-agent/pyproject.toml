@@ -12,6 +12,8 @@ dependencies = [
     "pydantic>=2.0",
     "click>=8.0",
     "pyyaml>=6.0",
+    "tree-sitter>=0.21,<0.22",
+    "tree-sitter-languages>=1.10,<2.0",
 ]
 
 [project.optional-dependencies]
@@ -31,3 +33,6 @@ extend-exclude = ["tests/fixtures/bad_python_module"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::FutureWarning:tree_sitter"]

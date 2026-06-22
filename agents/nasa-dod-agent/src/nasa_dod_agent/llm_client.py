@@ -16,7 +16,7 @@ class LLMClient:
         api_key: str,
         base_url: str = "https://api.openai.com/v1",
         model: str = "gpt-4o",
-        temperature: float = 0.2,
+        temperature: float = 0.0,
         max_tokens: int = 4096,
     ):
         self.api_key = api_key
@@ -34,7 +34,7 @@ class LLMClient:
             raise ValueError("OPENAI_API_KEY environment variable is required")
         base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
         model = os.environ.get("OPENAI_MODEL", "gpt-4o")
-        temp = config.temperature if config else 0.2
+        temp = config.temperature if config else 0.0
         max_tok = config.max_tokens if config else 4096
         return cls(
             api_key=api_key,

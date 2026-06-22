@@ -10,11 +10,15 @@ from nasa_dod_agent.state import GraphState
 
 
 def _run_review(
-    files: List[Path], llm_client: LLMClient, loader: StandardsLoader, base_path: Path
+    files: List[Path],
+    llm_client: LLMClient,
+    loader: StandardsLoader,
+    base_path: Path,
+    samples: int = 1,
 ) -> List[Finding]:
     """Delegate to review_code's internal review function."""
     from nasa_dod_agent.nodes.review_code import _run_review as _original
-    return _original(files, llm_client, loader, base_path)
+    return _original(files, llm_client, loader, base_path, samples=samples)
 
 
 def re_review_changed_node(state: GraphState) -> dict:
@@ -27,9 +31,11 @@ def re_review_changed_node(state: GraphState) -> dict:
     if not files:
         return {"findings": state.get("findings", [])}
 
-    llm = LLMClient.from_env(state["config"])
+    config = state["config"]
+    llm = LLMClient.from_env(config)
     loader = StandardsLoader()
-    findings = _run_review(files, llm, loader, base_path)
+    samples = config.review_samples if config else 1
+    findings = _run_review(files, llm, loader, base_path, samples=samples)
 
     # Merge: keep findings from files that weren't re-reviewed. Findings store
     # file_path the same way review_code displayed it to the LLM, so reuse

@@ -78,3 +78,7 @@ def test_should_apply_fixes_when_patches_exist():
 def test_should_apply_fixes_stops_when_no_fixable_findings():
     state = {"stop_reason": "no_fixable_findings", "patches": []}
     assert should_apply_fixes(state) == "end"
+
+def test_should_apply_fixes_stops_when_fix_attempts_exhausted():
+    state = {"stop_reason": "max_fix_attempts", "patches": []}
+    assert should_apply_fixes(state) == "end"

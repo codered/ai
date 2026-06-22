@@ -1,6 +1,7 @@
 """Node 1: review_code — perform NASA/DOD code review."""
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import List
@@ -8,10 +9,13 @@ from typing import List
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import ValidationError
 
+from nasa_dod_agent.chunker import FILE_LEVEL, chunk_file
 from nasa_dod_agent.llm_client import LLMClient
 from nasa_dod_agent.models import Finding, FixOption
 from nasa_dod_agent.standards_loader import StandardsLoader
 from nasa_dod_agent.state import GraphState
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_findings(data: dict | list) -> list[dict]:
@@ -197,8 +201,18 @@ EXTENSION_LANGUAGES = {
 }
 
 
-def _collect_files(target_path: str, mode: str, last_modified: List[str]) -> List[Path]:
-    """Collect files to review based on mode."""
+def _collect_files(
+    target_path: str, mode: str, last_modified: List[str], target_file: str | None = None
+) -> List[Path]:
+    """Collect files to review based on mode.
+
+    ``target_file``, when set, means the CLI was pointed at a single file
+    rather than a directory — return just that file, ignoring mode and
+    the exclude globs entirely.
+    """
+    if target_file:
+        return [Path(target_file)]
+
     target = Path(target_path)
     if mode == "incremental" and last_modified:
         return [Path(f) for f in last_modified if Path(f).exists()]
@@ -237,29 +251,133 @@ def _display_path(f: Path, base_path: Path) -> str:
         return str(f)
 
 
+def _dedupe_findings(findings: List[Finding]) -> List[Finding]:
+    """Keep one Finding per (file_path, rule), first-seen wins.
+
+    Multiple review samples of the same file legitimately report the same
+    real finding more than once — that must count once, not N times.
+    """
+    seen: dict[tuple[str, str], Finding] = {}
+    for f in findings:
+        key = (f.file_path, f.rule)
+        if key not in seen:
+            seen[key] = f
+    return list(seen.values())
+
+
 def _run_review(
-    files: List[Path], llm_client: LLMClient, loader: StandardsLoader, base_path: Path
+    files: List[Path],
+    llm_client: LLMClient,
+    loader: StandardsLoader,
+    base_path: Path,
+    samples: int = 1,
 ) -> List[Finding]:
-    """Call LLM to review the collected files."""
-    if not files:
-        return []
+    """Call LLM to review the collected files, one function/chunk per call.
 
-    # Build context: file paths + small content summaries
-    file_context = ""
+    Each file is split into chunks (one per top-level function/method,
+    plus a file-level chunk for everything else) via ``chunk_file`` — a
+    real run showed that batching even two small, unrelated files into
+    one prompt made the model report zero findings, even though it
+    reliably caught the exact same issue when shown the offending content
+    alone. Reviewing one chunk per call costs more calls but avoids that
+    dilution.
+
+    ``samples`` reviews each chunk that many times and unions the results
+    (deduped per chunk) — a real run showed the same content, same
+    prompt, returning findings on one call and none on the next at
+    temperature 0.2, so a single sample isn't reliable evidence of a
+    clean chunk on a noisy model.
+    """
+    findings: List[Finding] = []
     for f in files:
-        content = f.read_text()[:2000]  # first 2000 chars per file
-        file_context += f"\n--- {_display_path(f, base_path)} ---\n{content}\n"
+        display_path = _display_path(f, base_path)
+        language = EXTENSION_LANGUAGES.get(f.suffix, "")
+        chunks = chunk_file(f, language)
 
-    system_prompt = loader.build_system_prompt(languages=_detect_languages(files))
-    human_prompt = f"Review the following files:\n{file_context}"
+        function_count = sum(1 for c in chunks if c.name != FILE_LEVEL)
+        noun = "function" if function_count == 1 else "functions"
+        logger.info("Reviewing %s (%d %s)", display_path, function_count, noun)
 
-    messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=human_prompt),
-    ]
-    raw = llm_client.get_llm().invoke(messages)
+        file_findings: List[Finding] = []
 
-    return _parse_llm_response(str(raw.content))
+        for chunk in chunks:
+            logger.info("  └─ %s", chunk.name)
+            label = "file-level code" if chunk.name == FILE_LEVEL else f"function {chunk.name}"
+            system_prompt = loader.build_system_prompt(languages=_detect_languages([f]))
+            human_prompt = f"Review the following {label} from {display_path}:\n\n{chunk.text}"
+
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=human_prompt),
+            ]
+            chunk_findings: List[Finding] = []
+            for _ in range(samples):
+                raw = llm_client.get_llm().invoke(messages)
+                chunk_findings.extend(_parse_llm_response(str(raw.content)))
+
+            for finding in chunk_findings:
+                finding.function_name = None if chunk.name == FILE_LEVEL else chunk.name
+                if finding.line_number is not None:
+                    finding.line_number += chunk.start_line - 1
+
+            file_findings.extend(_dedupe_findings(chunk_findings))
+
+        # Per-chunk review is blind to cross-function issues — e.g. two
+        # functions sharing the same name (a real Go vet "redeclared"
+        # error) — since each chunk is reviewed in total isolation, with
+        # no visibility into any other function in the file. A real run
+        # confirmed the gap: chunking correctly split two identically-
+        # named functions into two separate chunks, but neither chunk's
+        # review could flag the collision. One whole-file pass restores
+        # that visibility, at the cost of one more LLM call per file.
+        #
+        # Skipped entirely when the file produced 1 or fewer chunks (no
+        # functions, or a single whole-file fallback chunk) — that case
+        # has no cross-function gap to fill, and a second pass would just
+        # review the exact same content twice for nothing.
+        if len(chunks) > 1:
+            logger.info("  └─ whole-file cross-function check")
+            whole_file_text = f.read_text()
+            whole_file_prompt = (
+                f"Review the following file as a whole, focusing on issues that "
+                f"span multiple functions (duplicate or colliding names, "
+                f"inconsistent patterns between functions, etc.) rather than "
+                f"issues local to one function:\n\n--- {display_path} ---\n"
+                f"{whole_file_text}\n"
+            )
+            whole_file_messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=whole_file_prompt),
+            ]
+            whole_file_findings: List[Finding] = []
+            for _ in range(samples):
+                raw = llm_client.get_llm().invoke(whole_file_messages)
+                whole_file_findings.extend(_parse_llm_response(str(raw.content)))
+
+            for finding in whole_file_findings:
+                finding.function_name = None
+
+            # A whole-file-pass finding that repeats a rule already caught
+            # by one of this file's own chunks is the SAME real issue
+            # double-counted — once correctly attributed to a function (the
+            # chunk pass) and once with function_name forced to None (the
+            # whole-file pass). Drop the redundant whole-file copy so it
+            # isn't counted twice in severity totals or fixed twice. This
+            # only checks against THIS file's own chunk findings, so it
+            # can't suppress a legitimate distinct finding in another file,
+            # and it leaves chunk-vs-chunk dedup (two different functions
+            # legitimately sharing the same rule) untouched.
+            already_found_rules = {fnd.rule for fnd in file_findings}
+            new_whole_file_findings = [
+                fnd
+                for fnd in _dedupe_findings(whole_file_findings)
+                if fnd.rule not in already_found_rules
+            ]
+            file_findings.extend(new_whole_file_findings)
+
+        findings.extend(file_findings)
+
+    return findings
 
 
 
@@ -270,6 +388,7 @@ def review_code_node(state: GraphState) -> dict:
         state["target_path"],
         state["review_mode"],
         state.get("last_modified_files", []),
+        target_file=state.get("target_file"),
     )
 
     if not files:
@@ -277,7 +396,8 @@ def review_code_node(state: GraphState) -> dict:
 
     llm = LLMClient.from_env(state["config"])
     loader = StandardsLoader()
-    findings = _run_review(files, llm, loader, Path(state["target_path"]))
+    samples = state["config"].review_samples
+    findings = _run_review(files, llm, loader, Path(state["target_path"]), samples=samples)
 
     files_reviewed = list(set(state.get("files_reviewed", []) + [str(f) for f in files]))
 
