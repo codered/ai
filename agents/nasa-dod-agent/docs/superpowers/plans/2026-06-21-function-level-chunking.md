@@ -1865,3 +1865,134 @@ Expected: console shows `Reviewing test/iseven_test.go (N functions)` with each 
 - [ ] **Step 4: Report results**
 
 Summarize what was observed in each of the three runs above (exact console output highlights, final iteration/severity counts, any unexpected errors) back to the user before considering this plan complete.
+
+**Actual Task 7 outcome (recorded after running):** Steps 1 and 2 passed as expected — logging and single-file targeting both work correctly, and the per-chunk/global retry caps fired correctly on a real run (nasa-dod-go-sample stopped at 6 iterations with `max_fix_attempts` instead of grinding further). Step 3 surfaced a real, structural gap rather than a bug: chunking correctly produced two separate chunks for the two `TestIsEven_maxUint` declarations (confirmed in the log), but the duplicate-declaration finding itself was **not** reported (P0: 0) — because each function chunk is reviewed in total isolation, with no visibility into the fact that another, differently-located function shares its name. That visibility only exists at the whole-file level, which per-function chunking deliberately gives up. This is the motivation for Task 8 below, which the user chose explicitly (over accepting the gap or adding a narrower deterministic name-collision check) as a "keep a whole-file pass as a supplement" mitigation.
+
+---
+
+### Task 8: Whole-file supplemental review pass for cross-function issues
+
+**Files:**
+- Modify: `src/nasa_dod_agent/nodes/review_code.py`
+- Test: `tests/test_review_code.py`
+
+**Interfaces:**
+- Consumes: nothing new — uses the same `loader`, `llm_client`, `samples`, `_parse_llm_response`, `_dedupe_findings`, `_detect_languages`, `_display_path` already in scope inside `_run_review`.
+- Produces: `_run_review` now makes one additional whole-file LLM call (times `samples`) per file, after that file's per-chunk calls, whose findings get `function_name = None` and are merged into the same returned list.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `tests/test_review_code.py`:
+
+```python
+def test_run_review_includes_whole_file_pass_for_cross_function_issues(temp_project):
+    """Per-function chunking reviews each function in total isolation, so
+    it cannot notice that two DIFFERENT functions share the same name (a
+    real Go vet "redeclared" error) — that fact only exists at the
+    whole-file level. A real run confirmed this: chunking correctly
+    produced two separate chunks for two identically-named functions, but
+    neither chunk's review could flag the collision. A supplemental
+    whole-file pass after the per-chunk calls restores that visibility.
+    """
+    target = temp_project / "dup.go"
+    target.write_text(
+        "package sample\n"
+        "\n"
+        "func TestIsEven_maxUint() {}\n"
+        "\n"
+        "func TestIsEven_maxUint() {}\n"
+    )
+
+    mock_llm_client = MagicMock()
+    # Two function chunks + one file-level chunk (the "package sample\n\n"
+    # preamble) = 3 per-chunk calls, then one whole-file pass call = 4
+    # total. Only the LAST call (the whole-file pass) returns a finding.
+    mock_llm_client.get_llm.return_value.invoke.side_effect = [
+        MagicMock(content="[]"),
+        MagicMock(content="[]"),
+        MagicMock(content="[]"),
+        MagicMock(content=(
+            '[{"severity": "P0", "file_path": "dup.go", "rule": "R", '
+            '"description": "TestIsEven_maxUint declared twice", '
+            '"why_fix": "W"}]'
+        )),
+    ]
+
+    findings = _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
+
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 4
+    assert len(findings) == 1
+    assert findings[0].function_name is None
+    assert "declared twice" in findings[0].description
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `uv run pytest tests/test_review_code.py -k whole_file_pass -v`
+Expected: FAIL on `assert mock_llm_client.get_llm.return_value.invoke.call_count == 4` (currently 3 — one per chunk, no whole-file pass exists yet).
+
+- [ ] **Step 3: Implement the whole-file pass**
+
+In `src/nasa_dod_agent/nodes/review_code.py`, inside `_run_review`'s `for f in files:` loop, after the existing `for chunk in chunks:` block (i.e. after this file's per-chunk reviewing is complete, still inside the outer `for f in files:` loop, before moving to the next file), add:
+
+```python
+        # Per-chunk review is blind to cross-function issues — e.g. two
+        # functions sharing the same name (a real Go vet "redeclared"
+        # error) — since each chunk is reviewed in total isolation, with
+        # no visibility into any other function in the file. A real run
+        # confirmed the gap: chunking correctly split two identically-
+        # named functions into two separate chunks, but neither chunk's
+        # review could flag the collision. One whole-file pass restores
+        # that visibility, at the cost of one more LLM call per file.
+        logger.info("  └─ whole-file cross-function check")
+        whole_file_text = f.read_text()
+        whole_file_prompt = (
+            f"Review the following file as a whole, focusing on issues that "
+            f"span multiple functions (duplicate or colliding names, "
+            f"inconsistent patterns between functions, etc.) rather than "
+            f"issues local to one function:\n\n--- {display_path} ---\n"
+            f"{whole_file_text}\n"
+        )
+        whole_file_messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=whole_file_prompt),
+        ]
+        whole_file_findings: List[Finding] = []
+        for _ in range(samples):
+            raw = llm_client.get_llm().invoke(whole_file_messages)
+            whole_file_findings.extend(_parse_llm_response(str(raw.content)))
+
+        for finding in whole_file_findings:
+            finding.function_name = None
+
+        findings.extend(_dedupe_findings(whole_file_findings))
+```
+
+(`system_prompt` is already computed once per file earlier in the loop — reuse it rather than rebuilding it. `display_path` is likewise already computed earlier in the per-file loop. No change to the per-chunk loop itself.)
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `uv run pytest tests/test_review_code.py -k whole_file_pass -v`
+Expected: PASS.
+
+- [ ] **Step 5: Run the full suite**
+
+Run: `uv run pytest -v`
+Expected: all PASS — no regressions to the per-chunk call-count assertions in other `_run_review` tests, since this adds one call per file *after* the existing per-chunk calls, which those tests' `side_effect` lists/`call_count` assertions don't account for. Read each existing `_run_review` test in `tests/test_review_code.py` before running: any test asserting an exact `call_count` (e.g. `test_run_review_calls_llm_once_per_file`, `test_run_review_samples_each_file_n_times`, `test_run_review_dedupes_same_finding_across_samples`, `test_run_review_stamps_function_name_and_offsets_line_number`) will need its expected count increased by one whole-file-pass call per file (times `samples`), and any `side_effect` list of canned responses will need one more entry per file appended for the whole-file pass call. Update each one to account for the new call(s) rather than skipping them — do not weaken an assertion just to make it pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/nasa_dod_agent/nodes/review_code.py tests/test_review_code.py
+git commit -m "feat(nasa-dod-agent): add whole-file pass to catch cross-function issues chunking misses"
+```
+
+- [ ] **Step 7: Manual re-verification**
+
+Re-run the iseven check from Task 7 Step 3:
+
+```bash
+uv run nasa-dod-agent review --reset ../../../iseven/
+```
+
+Expected: console now shows a `  └─ whole-file cross-function check` line for `test/iseven_test.go` after its per-function lines; the duplicate-`TestIsEven_maxUint` finding (or an equivalent "declared twice"/"duplicate function" finding) is reported this time. Report the actual final P0–P3 counts and stop reason back to the user — do not assume success without reading the actual output, the model is the same non-deterministic one used throughout this plan's verification.
