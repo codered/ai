@@ -298,6 +298,8 @@ def _run_review(
         noun = "function" if function_count == 1 else "functions"
         logger.info("Reviewing %s (%d %s)", display_path, function_count, noun)
 
+        file_findings: List[Finding] = []
+
         for chunk in chunks:
             logger.info("  └─ %s", chunk.name)
             label = "file-level code" if chunk.name == FILE_LEVEL else f"function {chunk.name}"
@@ -318,7 +320,7 @@ def _run_review(
                 if finding.line_number is not None:
                     finding.line_number += chunk.start_line - 1
 
-            findings.extend(_dedupe_findings(chunk_findings))
+            file_findings.extend(_dedupe_findings(chunk_findings))
 
         # Per-chunk review is blind to cross-function issues — e.g. two
         # functions sharing the same name (a real Go vet "redeclared"
@@ -328,28 +330,52 @@ def _run_review(
         # named functions into two separate chunks, but neither chunk's
         # review could flag the collision. One whole-file pass restores
         # that visibility, at the cost of one more LLM call per file.
-        logger.info("  └─ whole-file cross-function check")
-        whole_file_text = f.read_text()
-        whole_file_prompt = (
-            f"Review the following file as a whole, focusing on issues that "
-            f"span multiple functions (duplicate or colliding names, "
-            f"inconsistent patterns between functions, etc.) rather than "
-            f"issues local to one function:\n\n--- {display_path} ---\n"
-            f"{whole_file_text}\n"
-        )
-        whole_file_messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=whole_file_prompt),
-        ]
-        whole_file_findings: List[Finding] = []
-        for _ in range(samples):
-            raw = llm_client.get_llm().invoke(whole_file_messages)
-            whole_file_findings.extend(_parse_llm_response(str(raw.content)))
+        #
+        # Skipped entirely when the file produced 1 or fewer chunks (no
+        # functions, or a single whole-file fallback chunk) — that case
+        # has no cross-function gap to fill, and a second pass would just
+        # review the exact same content twice for nothing.
+        if len(chunks) > 1:
+            logger.info("  └─ whole-file cross-function check")
+            whole_file_text = f.read_text()
+            whole_file_prompt = (
+                f"Review the following file as a whole, focusing on issues that "
+                f"span multiple functions (duplicate or colliding names, "
+                f"inconsistent patterns between functions, etc.) rather than "
+                f"issues local to one function:\n\n--- {display_path} ---\n"
+                f"{whole_file_text}\n"
+            )
+            whole_file_messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=whole_file_prompt),
+            ]
+            whole_file_findings: List[Finding] = []
+            for _ in range(samples):
+                raw = llm_client.get_llm().invoke(whole_file_messages)
+                whole_file_findings.extend(_parse_llm_response(str(raw.content)))
 
-        for finding in whole_file_findings:
-            finding.function_name = None
+            for finding in whole_file_findings:
+                finding.function_name = None
 
-        findings.extend(_dedupe_findings(whole_file_findings))
+            # A whole-file-pass finding that repeats a rule already caught
+            # by one of this file's own chunks is the SAME real issue
+            # double-counted — once correctly attributed to a function (the
+            # chunk pass) and once with function_name forced to None (the
+            # whole-file pass). Drop the redundant whole-file copy so it
+            # isn't counted twice in severity totals or fixed twice. This
+            # only checks against THIS file's own chunk findings, so it
+            # can't suppress a legitimate distinct finding in another file,
+            # and it leaves chunk-vs-chunk dedup (two different functions
+            # legitimately sharing the same rule) untouched.
+            already_found_rules = {fnd.rule for fnd in file_findings}
+            new_whole_file_findings = [
+                fnd
+                for fnd in _dedupe_findings(whole_file_findings)
+                if fnd.rule not in already_found_rules
+            ]
+            file_findings.extend(new_whole_file_findings)
+
+        findings.extend(file_findings)
 
     return findings
 

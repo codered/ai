@@ -69,7 +69,14 @@ class RubricConfig(BaseModel):
         description=(
             "Times to review each file; findings are unioned across "
             "samples (deduped by file+rule) to catch issues a noisy model "
-            "only reports on some of its attempts."
+            "only reports on some of its attempts. This multiplies against "
+            "BOTH layers of calls _run_review makes per file: once per "
+            "per-function chunk, AND once more for the whole-file "
+            "cross-function pass (skipped only when the file has 1 or "
+            "fewer chunks) — so the number of LLM calls for a file scales "
+            "as review_samples * (functions_in_file + 1), not just "
+            "file count. Raise this with care on large, many-function "
+            "files."
         ),
     )
     max_fix_attempts_per_chunk: int = Field(

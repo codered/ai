@@ -95,24 +95,24 @@ def test_run_review_calls_llm_once_per_file(temp_project):
     file_b = temp_project / "b.go"
     file_b.write_text("package b\n")
 
-    # Each file has one per-chunk call plus one whole-file pass call, so
-    # two files = 4 total calls.
+    # Both files have no functions, so chunk_file gives each a single
+    # "<file-level>" chunk (len(chunks) == 1) — the whole-file pass is
+    # skipped for single-chunk files (Finding 2), so each file gets exactly
+    # one per-chunk call: two files = 2 total calls.
     mock_llm_client = MagicMock()
     mock_llm_client.get_llm.return_value.invoke.side_effect = [
         MagicMock(
             content='[{"severity": "P2", "file_path": "a.go", "rule": "R", '
             '"description": "D", "why_fix": "W"}]'
         ),
-        MagicMock(content="[]"),  # a.go whole-file pass
         MagicMock(content="[]"),  # b.go per-chunk
-        MagicMock(content="[]"),  # b.go whole-file pass
     ]
 
     findings = _run_review(
         [file_a, file_b], mock_llm_client, StandardsLoader(), temp_project
     )
 
-    assert mock_llm_client.get_llm.return_value.invoke.call_count == 4
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 2
     assert len(findings) == 1
     assert findings[0].file_path == "a.go"
 
@@ -126,9 +126,10 @@ def test_run_review_samples_each_file_n_times(temp_project):
     target = temp_project / "a.go"
     target.write_text("package a\n")
 
-    # samples=3 means 3 per-chunk calls plus 3 whole-file pass calls (one
-    # file, one chunk) = 6 total. Only the whole-file pass calls return "[]"
-    # so the single chunk-level finding isn't duplicated.
+    # "package a\n" has no functions, so chunk_file gives a single
+    # "<file-level>" chunk (len(chunks) == 1) — the whole-file pass is
+    # skipped for single-chunk files (Finding 2). samples=3 means 3
+    # per-chunk calls only = 3 total.
     mock_llm_client = MagicMock()
     mock_llm_client.get_llm.return_value.invoke.side_effect = [
         MagicMock(content="[]"),
@@ -137,16 +138,13 @@ def test_run_review_samples_each_file_n_times(temp_project):
             '"description": "D", "why_fix": "W"}]'
         ),
         MagicMock(content="[]"),
-        MagicMock(content="[]"),
-        MagicMock(content="[]"),
-        MagicMock(content="[]"),
     ]
 
     findings = _run_review(
         [target], mock_llm_client, StandardsLoader(), temp_project, samples=3
     )
 
-    assert mock_llm_client.get_llm.return_value.invoke.call_count == 6
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 3
     assert len(findings) == 1
     assert findings[0].rule == "R"
 
@@ -163,15 +161,15 @@ def test_run_review_dedupes_same_finding_across_samples(temp_project):
         '[{"severity": "P0", "file_path": "a.go", "rule": "R", '
         '"description": "D", "why_fix": "W"}]'
     )
-    # samples=2 means 2 per-chunk calls plus 2 whole-file pass calls (one
-    # file, one chunk). The whole-file pass calls return "[]" so the
-    # dedupe assertion below stays scoped to the per-chunk duplicate.
+    # "package a\n" has no functions, so chunk_file gives a single
+    # "<file-level>" chunk (len(chunks) == 1) — the whole-file pass is
+    # skipped for single-chunk files (Finding 2). samples=2 means 2
+    # per-chunk calls only, both returning the same finding, which the
+    # per-chunk dedupe must collapse to one.
     mock_llm_client = MagicMock()
     mock_llm_client.get_llm.return_value.invoke.side_effect = [
         MagicMock(content=same_finding_json),
         MagicMock(content=same_finding_json),
-        MagicMock(content="[]"),
-        MagicMock(content="[]"),
     ]
 
     findings = _run_review(
@@ -273,6 +271,71 @@ def test_run_review_includes_whole_file_pass_for_cross_function_issues(temp_proj
     assert len(findings) == 1
     assert findings[0].function_name is None
     assert "declared twice" in findings[0].description
+
+
+def test_run_review_whole_file_pass_does_not_duplicate_chunk_finding(temp_project):
+    """Finding 1 regression test: nothing stops the whole-file pass from
+    re-reporting an issue a per-chunk call already found for the same
+    file. When that happens, the SAME real issue would otherwise be
+    counted twice — once correctly attributed to "Foo" (the chunk pass)
+    and once with function_name forced to None (the whole-file pass) —
+    inflating severity counts and causing generate_fixes to attempt two
+    separate patches for one real issue. The fix filters whole-file-pass
+    findings against the set of rules already found by THIS FILE's own
+    chunks, dropping the redundant repeat.
+    """
+    target = temp_project / "sample.go"
+    target.write_text(
+        "package sample\n"
+        "\n"
+        "func Foo() {\n"
+        "\tx := 1\n"
+        "}\n"
+    )
+
+    # chunk_file gives TWO chunks for this source ("Foo", then
+    # "<file-level>"), so len(chunks) > 1 and the whole-file pass runs:
+    # two per-chunk calls + one whole-file pass call = 3 total. The chunk
+    # call for "Foo" reports rule "R"; the whole-file pass ALSO reports
+    # rule "R" (simulating the model re-reporting the same real issue at
+    # the whole-file level) — that repeat must be dropped.
+    mock_llm_client = MagicMock()
+    mock_llm_client.get_llm.return_value.invoke.side_effect = [
+        MagicMock(content=(
+            '[{"severity": "P2", "file_path": "sample.go", "rule": "R", '
+            '"description": "Foo issue", "why_fix": "W"}]'
+        )),
+        MagicMock(content="[]"),  # file-level chunk: clean
+        MagicMock(content=(
+            '[{"severity": "P2", "file_path": "sample.go", "rule": "R", '
+            '"description": "Foo issue restated at whole-file level", '
+            '"why_fix": "W"}]'
+        )),
+    ]
+
+    findings = _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
+
+    matching = [fnd for fnd in findings if fnd.rule == "R"]
+    assert len(matching) == 1
+    assert matching[0].function_name == "Foo"
+
+
+def test_run_review_skips_whole_file_pass_for_single_chunk_file(temp_project):
+    """Finding 2 regression test: a file with zero functions chunks down
+    to a single "<file-level>" fallback chunk. A second whole-file-style
+    pass over that exact same content would just review identical text
+    twice for nothing, so it must be skipped entirely when
+    len(chunks) <= 1 — exactly one LLM call total, not two.
+    """
+    target = temp_project / "nofuncs.go"
+    target.write_text("package nofuncs\n\nvar X = 1\n")
+
+    mock_llm_client = MagicMock()
+    mock_llm_client.get_llm.return_value.invoke.return_value.content = "[]"
+
+    _run_review([target], mock_llm_client, StandardsLoader(), temp_project)
+
+    assert mock_llm_client.get_llm.return_value.invoke.call_count == 1
 
 
 def test_run_review_logs_file_and_function_progress(temp_project, caplog):
