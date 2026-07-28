@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-8-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-10-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -213,6 +213,34 @@ Always delegates the actual reading, categorizing, and writing to a sub-agent, s
 | **Tiers** | `short/` — active & frequent · `long/` — full project detail |
 | **Lookup** | JSON indexes (top-level tag manifest + per-tier detail) for fast "do we know this?" checks |
 | **Always** | Delegates to a sub-agent — never reads/writes memory files in the main context |
+
+---
+
+### 🎯 [Optimizer Mindset](skills/optimizer-mindset/)
+
+Treats any question as an optimization problem rather than a request for a balanced survey. Pins the actual objective, names the binding constraint, enumerates the real contenders, scores them with magnitudes, and makes a single call with the runner-up and why it lost. Works in any domain — code, hardware, cooking, purchases, trip planning.
+
+Three verbosity modes change how much reasoning is *shown*, never how much is *done*: lite (the default) gives the verdict and little else, verbose walks the full method out loud. "It depends" is treated as a starting point to resolve, never a conclusion to settle for.
+
+| | |
+|---|---|
+| **Trigger** | "what's the best X" · "should I do A or B" · recommendations · build-vs-buy · any cost/quality/time tradeoff |
+| **Method** | Pin objective → name binding constraint → decompose levers → enumerate options → score with magnitudes → call it |
+| **Modes** | `lite` (default) · `medium` · `verbose` — switch with a word, per-message or standing |
+| **Output** | A decision, not a survey — with the runner-up named and the reason it lost |
+
+### 🔤 [Neuro-Attuned Communication Filter](skills/nfc/)
+
+Shapes output for clarity, directness, and low cognitive load, applying the mechanical writing rules of [ASD-STE100 Simplified Technical English](https://www.asd-ste100.org/) to ordinary text. Built for readers who pay a real cost for ambiguity — buried warnings, hedged instructions, metaphors standing in for facts.
+
+Every rule is countable rather than descriptive, so small and local models can self-check against them: sentence length, sentences per paragraph, noun-cluster depth, one instruction per sentence. Ships a standalone system-prompt version in three sizes for chat boxes and local models with no skill-loading mechanism at all.
+
+| | |
+|---|---|
+| **Trigger** | `[NFC: strict]` · "plain language" · "clarity filter" · "make this unambiguous" · "reduce cognitive load" |
+| **Modes** | `standard` (default) → `clear` → `strict` — increasing strictness, each inheriting the last |
+| **Rules** | ≤20 words/procedural sentence · ≤6 sentences/paragraph · active voice · imperative steps · warnings before the step |
+| **Portable** | `references/system-prompt.md` — full, compact, and one-line blocks for any model or API |
 
 ---
 
