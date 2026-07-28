@@ -1,65 +1,265 @@
-Neuro-Attuned Communication Filter (NFC) Skill Definition
+---
+name: nfc
+description: >
+  Use this skill whenever the user wants output shaped for clarity, directness, and low
+  cognitive load. Triggers include: "NFC", "[NFC: strict]", "plain language", "plain English",
+  "simplified technical english", "STE", "clarity filter", "strict mode", "make this
+  unambiguous", "no metaphors", "write this literally", "reduce cognitive load", or any
+  request to rewrite text so it is easier to process. Also use it when the user states they
+  are neurodivergent, autistic, or ADHD and asks for clearer communication, and when a task
+  produces instructions, procedures, or safety-critical steps where ambiguity is expensive.
+---
 
-This AI skill is designed to adjust the linguistic and structural presentation of generated text to maximize clarity, minimize ambiguity, and enhance accessibility based on the principles of the ASD-STE100 framework.
+# Neuro-Attuned Communication Filter (NFC)
 
-Activation: [NFC: {mode}]
-Default Mode: standard
+Constrains generated text so it is literal, predictable, and easy to process. NFC applies the
+mechanical writing rules of ASD-STE100 (Simplified Technical English) to ordinary output.
 
-🧠 Neuro-Attuned Communication Filter (NFC)
-Skill Description: The Neuro-Attuned Communication Filter (NFC) operates by analyzing the generated content and applying specific structural and lexical constraints dictated by the ASD-STE100 framework. Its primary purpose is to transform potentially vague, flowery, or highly ambiguous output into communication that is highly predictable, direct, and easy to process for neurodivergent users.
+NFC is a filter on the final answer. It changes how the answer is written. It does not change
+what the answer says, and it does not change how much research or reasoning goes into it.
 
-⚙️ Operational Modes
+---
 
-🟢 Mode 1: Strict (Maximum Fidelity)
-The output is filtered to adhere rigorously to the ASD-STE100 principles of absolute clarity and directness.
+## Activation
 
-Goal: Zero ambiguity. The output must be instantly actionable or fully comprehensible.
-Processing Rules:
+| Form | Example | Effect |
+|---|---|---|
+| Explicit tag | `[NFC: strict]` | Applies that mode to the current reply |
+| Named mode | "use NFC strict" | Applies that mode to the current reply |
+| Persistent | "stay in NFC clear" | Applies that mode to every reply until the user cancels |
+| Bare | "use NFC" | Applies `standard` |
+| Cancel | "stop NFC", "normal mode" | Returns to unfiltered output |
 
-Directness: Eliminate all passive voice. Prioritize subject-verb-object structures.
-Lexicon: Utilize specific, concrete nouns and verbs. Define jargon immediately upon first appearance. Strictly prohibit flowery language, metaphors, and idioms.
-Structure: Output must use clear formatting (bullet points, numbered lists, clear headers).
-Pacing/Overload: Present information in discrete, digestible units (short sentences, minimal paragraphs). Deconstruct complex concepts into sequential steps.
-Ideal For: Instructions, technical summaries, critical decision-making content.
-Tone: Highly functional, precise, objective.
-🟡 Mode 2: Loose (Contextual Clarity)
-The output maintains high clarity and predictability while allowing for necessary context and natural flow.
+Default mode when NFC is active but no mode is named: **`standard`**.
 
-Goal: Reduce cognitive friction without sacrificing conversational quality. The communication is clear, supportive, but not aggressively literal.
-Processing Rules:
+If the user names a mode that does not exist, use the closest match and state which mode you
+applied in one line, before the output.
 
-Directness: Correct ambiguous phrasing, but retain some natural flow and supportive language.
-Lexicon: Use clear language but permit descriptive adjectives when they aid understanding, rather than cause confusion. Minimize metaphors or explain them.
-Structure: Use clear formatting, but permit slightly longer, more explanatory sentences than Strict mode.
-Pacing/Overload: Organize information logically, using transitional phrasing to guide the reader through complex topics. Preemptively address potential points of confusion.
-Ideal For: Explanations, recommendations, general informative essays.
-Tone: Clear, supportive, empathetic, organized.
-🔴 Mode 3: Standard (Baseline Clarity)
-The output is generated with increased structural clarity and directness, applying rules similar to the framework but without the strict lexical enforcement of the ASD-STE100 vocabulary. (Current Default)
+---
 
-Goal: Improve general clarity and reduce ambiguity compared to standard AI output, while retaining conversational flexibility.
-Processing Rules:
+## Modes
 
-Directness: Rephrase significantly vague sentences and remove excessive passive voice, but allow for more natural sentence construction.
-Lexicon: Avoid unnecessary jargon and ambiguity, but maintain a broader lexical range than Strict mode.
-Structure: Ensure logical paragraphing and appropriate use of headings.
-Pacing/Overload: Structure information into clear sections, but allow for more narrative flow than Strict mode.
-Ideal For: General informative tasks, explanations needing a professional but less rigid presentation.
-Tone: Clear, professional, and organized.
-Updated Example Application
-User Prompt: "Write a short summary of the benefits of learning a new language."
+Modes increase in strictness: `standard` → `clear` → `strict`. Each mode inherits every
+constraint of the mode before it.
 
-Default Execution (NFC: Standard):
-Learning a new language provides significant advantages, both for your brain and your personal life. Cognitively, the process actively improves problem-solving and strengthens memory functions. Professionally, it increases your market value. Additionally, by engaging with new grammar and vocabulary, you gain a clearer understanding of different cultures.
+### `standard` — baseline clarity (default)
 
-Strict Execution (NFC: Strict):
-Topic: Benefits of Language Acquisition
+Removes vagueness and inflated language while keeping a natural voice. Use for general
+explanations and conversation.
 
-Cognitive Enhancement: Learning a new language improves problem-solving abilities. Studies indicate increased mental flexibility.
-Memory Function: Acquisition requires advanced memory recall and retention. This strengthens memory capacity.
-Career Advancement: Multilingual skills increase market value for employment.
-Cultural Understanding: Exposure to new grammar and vocabulary provides direct insight into foreign cultures.
-Process: Begin with vocabulary acquisition, then practice grammar rules, then engage in active conversational practice.
-Loose Execution (NFC: Loose):
-Topic: The Benefits of Learning a New Language
-Learning a new language offers several deep rewards, both mentally and personally. From a cognitive standpoint, the process of learning new grammar and vocabulary acts like a mental workout, significantly improving your problem-solving skills and increasing your brain's ability to multitask. Furthermore, it provides a direct gateway to understanding new cultures, helping you connect with people on a deeper, more meaningful level. Ultimately, these skills can also open up exciting new professional doors.
+### `clear` — contextual clarity
+
+Adds structure, controlled sentence length, and defined terms. Keeps enough connective language
+to explain reasoning. Use for recommendations, comparisons, and teaching material.
+
+### `strict` — maximum fidelity
+
+Applies the ASD-STE100 mechanical rules in full. Output is literal and instantly actionable.
+Use for instructions, procedures, configuration steps, and safety-critical or
+decision-critical content.
+
+---
+
+## Rule table
+
+Apply every rule for the active mode. These are countable, so check them.
+
+| Constraint | `standard` | `clear` | `strict` |
+|---|---|---|---|
+| Words per sentence | ≤ 30 | ≤ 25 | ≤ 20 procedural, ≤ 25 descriptive |
+| Sentences per paragraph | ≤ 8 | ≤ 6 | ≤ 6 |
+| Instructions per sentence | any | 1 preferred | exactly 1 |
+| Topics per paragraph | 1 preferred | 1 | 1 |
+| Voice | active preferred | active; passive only if the actor is unknown | active only; passive only in descriptions where the actor is unknown |
+| Verb forms | any | simple present, past, future | infinitive, imperative, simple present, simple past, simple future, past participle as adjective only |
+| Present perfect | allowed | avoid | prohibited — use simple past |
+| `-ing` forms | allowed | only as a noun | only as a technical noun, or inside one |
+| Words per noun cluster | ≤ 4 | ≤ 3 | ≤ 3 |
+| Articles (`the`, `a`) | normal | required | required, never dropped |
+| Omitted subject or verb | allowed | avoid | prohibited |
+| Idioms and metaphors | use sparingly | explain on use | prohibited |
+| Jargon | define on first use | define on first use | define on first use, or replace it |
+| Hedging ("might", "perhaps") | allowed | only when the uncertainty is real | only when the uncertainty is real, and state the cause |
+| Emoji | allowed | sparingly | prohibited |
+| Lists | as useful | for any 3+ items | required for any sequence of steps |
+
+Word substitutions and the full rule set: `references/style-rules.md`.
+
+---
+
+## Output syntax
+
+Higher modes constrain layout, not just wording.
+
+### `standard`
+
+Prose with headings where the topic changes. No fixed template.
+
+### `clear`
+
+```
+<Heading>
+
+<Lead sentence stating the conclusion.>
+
+- <Point>
+- <Point>
+
+<Closing sentence stating what to do next, if there is an action.>
+```
+
+State the conclusion first, then the support. Do not build up to the answer.
+
+### `strict`
+
+```
+Topic: <noun phrase>
+
+Definitions:                          (include only if a technical term appears)
+- <Term>: <one-sentence definition>
+
+Steps:                                (include only if the reader must do something)
+1. <Imperative verb> <object>.
+2. <Imperative verb> <object>.
+
+Facts:                                (include only if the reader must know something)
+- <One statement per line.>
+
+Result: <What the reader will observe when the steps are complete.>
+
+Warning: <Condition that causes damage, data loss, or injury.>
+```
+
+Rules for `strict` layout:
+
+- Omit any section that has no content. Do not write "None" or "N/A".
+- Start every step with an imperative verb.
+- Put a warning **before** the step it applies to, not after.
+- One fact per line. Do not join facts with "and" or ";".
+
+---
+
+## Self-check
+
+Run this against your draft before you send it. Do not describe the check in the output.
+
+**Every mode:**
+
+1. Did I remove every metaphor, idiom, and figure of speech the mode prohibits?
+2. Is every technical term defined on first use, or replaced?
+3. Does any sentence exceed the word limit? Count the longest one.
+4. Did I state the conclusion before the reasoning?
+
+**`clear` and `strict` also:**
+
+5. Does any paragraph exceed 6 sentences?
+6. Is any sentence passive where the actor is known? Rewrite it as active.
+7. Does any noun cluster exceed 3 words?
+
+**`strict` also:**
+
+8. Does every step start with an imperative verb?
+9. Does any sentence contain more than one instruction? Split it.
+10. Did I use the present perfect anywhere? Replace it with simple past.
+11. Did I drop any article? Restore it.
+
+If a check fails, fix the draft and re-run that check. Do not send output that fails a check
+for the active mode.
+
+---
+
+## Worked examples
+
+**Prompt:** "Write a short summary of the benefits of learning a new language."
+
+### `standard`
+
+> Learning a new language has three main benefits.
+>
+> It improves problem-solving and strengthens memory, because the process forces you to hold
+> and apply new patterns. It raises your value in the job market, especially in roles that
+> involve international work. It also gives you direct insight into another culture, since
+> grammar and vocabulary carry assumptions that translation tends to hide.
+
+### `clear`
+
+> **Benefits of learning a new language**
+>
+> Learning a new language produces cognitive, professional, and cultural benefits.
+>
+> - **Cognitive:** The process improves problem-solving and strengthens memory.
+> - **Professional:** Multilingual skills increase your value to employers.
+> - **Cultural:** Grammar and vocabulary show you how other people organise ideas.
+>
+> To start, choose one language and practise it daily for a short period.
+
+### `strict`
+
+> Topic: Benefits of language learning
+>
+> Facts:
+> - Language learning improves problem-solving.
+> - Language learning strengthens memory.
+> - Multilingual skills increase employment value.
+> - Grammar and vocabulary show cultural differences directly.
+>
+> Steps:
+> 1. Select one language.
+> 2. Learn 20 common words.
+> 3. Learn the present tense rules.
+> 4. Speak with one other person each week.
+>
+> Result: You can hold a short conversation after about three months.
+
+---
+
+**Prompt:** "How do I roll back the deploy?" — shown in `strict`, where the mode matters most.
+
+> Topic: Deployment rollback
+>
+> Definitions:
+> - Rollback: The process that returns the service to the last known good release.
+>
+> Warning: A rollback removes all data written by the new release. Back up the database first.
+>
+> Steps:
+> 1. Back up the database.
+> 2. Find the tag for the last good release.
+> 3. Run `deploy --tag <tag>`.
+> 4. Check that the health endpoint returns status 200.
+>
+> Result: The service runs the previous release. The health endpoint returns status 200.
+
+Compare the same answer without NFC: *"You'll want to grab the last good tag and push that
+through — just be careful, since rolling back can blow away anything the new version wrote,
+so it's worth backing things up first."* That sentence hides a destructive warning inside a
+casual clause, and places it after the instruction it applies to.
+
+---
+
+## Scope
+
+NFC does not:
+
+- Change facts, conclusions, or recommendations to make them simpler than they are.
+- Remove necessary uncertainty. If something is genuinely unknown, say so plainly and say why.
+- Apply to code, file contents, commands, or quoted material. Reproduce those exactly.
+- Shorten output that needs to be long. Clarity is not brevity.
+
+If a mode's constraints would make an answer inaccurate, keep the answer accurate. State in
+one line which constraint you relaxed and why.
+
+---
+
+## Attribution
+
+The mechanical rules are derived from ASD-STE100 Simplified Technical English, Issue 9
+(January 2025), copyright ASD (AeroSpace and Defence Industries Association of Europe),
+maintained by the STE Maintenance Group.
+
+This skill implements the writing rules only. It does not reproduce the ASD-STE100
+approved-word dictionary, which is ASD's copyrighted content. Obtain the official
+specification, including the dictionary, free of charge from
+<https://www.asd-ste100.org/STE_downloads.html>.
+
+NFC is an independent work and is not endorsed by or affiliated with ASD or the STEMG.
