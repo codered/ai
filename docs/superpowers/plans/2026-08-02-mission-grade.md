@@ -1224,7 +1224,7 @@ existing terms.
 
 ```python
 def handle_subscription_change(request):
-    """Applies a subscription change and returns the resulting invoice."""
+    """Computes the invoice for a subscription change."""
     change = _parse_subscription_change(request)
     credit = _compute_proration_credit(change)
     invoice = _build_invoice(change, credit)
