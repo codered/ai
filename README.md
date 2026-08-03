@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-10-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-11-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -241,6 +241,19 @@ Every rule is countable rather than descriptive, so small and local models can s
 | **Modes** | `standard` (default) → `clear` → `strict` — increasing strictness, each inheriting the last |
 | **Rules** | ≤20 words/procedural sentence · ≤6 sentences/paragraph · active voice · imperative steps · warnings before the step |
 | **Portable** | `references/system-prompt.md` — full, compact, and one-line blocks for any model or API |
+
+### 🛰️ [Mission Grade](skills/mission-grade/)
+
+Applies NASA/DoD engineering standards to the code and [ASD-STE100 Simplified Technical English](https://www.asd-ste100.org/) to the prose that ships with it — comments, docstrings, error messages, identifiers, commit messages — from a single trigger, with no need to name two skills on every request.
+
+The two standards contradict each other in specific places, and one line resolves all of them: **STE governs the artifact, NASA/DoD governs the conversation about the artifact.** A review of the same file therefore carries a required ⚠️ callout for a leaked key while flagging an emoji in a docstring three lines below it.
+
+| | |
+|---|---|
+| **Trigger** | "refactor this" · "implement X" · "review this code" · "mission grade" · any production code work |
+| **Code** | Power of Ten · DoD secure-coding baseline · TDD Iron Law — no production code without a failing test |
+| **Prose** | Procedural comments and error strings `strict` · docstrings and commits `clear` · identifiers by word rules |
+| **Review** | Six gates — the five NASA/DoD gates plus a prose gate, severity by harm rather than rule count |
 
 ---
 
