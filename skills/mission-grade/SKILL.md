@@ -50,8 +50,9 @@ any other rule.
 | Review findings, rule citations, callouts, gate status, option lists | NASA/DoD | exempt |
 | Chat replies about the work | NASA/DoD | exempt |
 
-The table is fixed. Do not offer to change it, and do not adjust it on request — point the user
-at `skills/nfc/` if they want freely selectable modes.
+The table is fixed. Do not offer to change it, and do not adjust it on request. If the `nfc`
+skill is available in this environment, point the user there for freely selectable modes; if it
+is not, say so in one line and leave the table as it stands.
 
 **Procedural or rationale?** A comment is procedural if it tells the reader to do something:
 setup steps, an ordering the caller must obey, a manual recovery procedure. It is rationale if
