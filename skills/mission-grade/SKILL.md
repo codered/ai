@@ -325,5 +325,8 @@ before you mark any task done. Do not narrate the check in your output.
 5. Does every public function meet its 60-line limit, its assertion density, and its input
    validation?
 6. Does every changed behavior have a test that failed first?
+7. Is any secret hardcoded, and does any log line carry a secret or PII?
+8. Is there dead code, an undocumented public API, or a `TODO` with no linked issue?
+9. Do the linters and type checkers pass at their strictest setting?
 
 If a check fails, fix it and re-run that check. Do not send output that fails a check.
