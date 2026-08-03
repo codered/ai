@@ -373,9 +373,10 @@ Non-negotiable on anything touching untrusted input, secrets, or authentication.
 
 ## Flow: writing code
 
-1. **RED** — Write the failing test. Its name and its failure message are artifact prose, so
-   `strict` binds them. Run it. Confirm it fails for the right reason, not on a typo or a
-   missing import. Show the output.
+1. **RED** — Write the failing test. Its failure message is artifact prose, so `strict` binds
+   it. Its name follows the identifier word rules; descriptive test names are exempt from the
+   cluster cap. Run it. Confirm it fails for the right reason, not on a typo or a missing
+   import. Show the output.
 2. **GREEN** — Write the minimum code to pass. Nothing more. Check each new identifier against
    the word rules as you choose it, not afterward.
 3. **REFACTOR** — Improve structure with tests green. Write docstrings and rationale comments
@@ -1022,6 +1023,8 @@ costs you the blockers too.
 - **An assertion message that names the required condition.** `"limit must be positive"` states
   what the caller must do. Assertions address a programmer who broke an invariant, not an end
   user, so the what/why/what-to-do formula does not bind them.
+- **A descriptive test name.** Test names carry information a reader needs at a glance. The
+  cluster cap does not apply to them.
 
 ---
 
@@ -1131,7 +1134,8 @@ one review.
 
 **Request:** "Add a rate limiter to the upload endpoint. 10 uploads per minute per tenant."
 
-**RED.** The test name and its failure message are artifact prose, so `strict` binds them.
+**RED.** The failure message is artifact prose, so `strict` binds it. The test's name follows
+the identifier word rules; descriptive test names are exempt from the cluster cap.
 
 ```python
 def test_rate_limiter_blocks_the_eleventh_upload_in_one_minute():

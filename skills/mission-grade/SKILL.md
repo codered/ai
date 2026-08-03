@@ -197,9 +197,10 @@ Non-negotiable on anything touching untrusted input, secrets, or authentication.
 
 ## Flow: writing code
 
-1. **RED** — Write the failing test. Its name and its failure message are artifact prose, so
-   `strict` binds them. Run it. Confirm it fails for the right reason, not on a typo or a
-   missing import. Show the output.
+1. **RED** — Write the failing test. Its failure message is artifact prose, so `strict` binds
+   it. Its name follows the identifier word rules; descriptive test names are exempt from the
+   cluster cap. Run it. Confirm it fails for the right reason, not on a typo or a missing
+   import. Show the output.
 2. **GREEN** — Write the minimum code to pass. Nothing more. Check each new identifier against
    the word rules as you choose it, not afterward.
 3. **REFACTOR** — Improve structure with tests green. Write docstrings and rationale comments

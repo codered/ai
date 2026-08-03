@@ -67,6 +67,8 @@ costs you the blockers too.
 - **An assertion message that names the required condition.** `"limit must be positive"` states
   what the caller must do. Assertions address a programmer who broke an invariant, not an end
   user, so the what/why/what-to-do formula does not bind them.
+- **A descriptive test name.** Test names carry information a reader needs at a glance. The
+  cluster cap does not apply to them.
 
 ---
 

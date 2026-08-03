@@ -9,7 +9,8 @@ one review.
 
 **Request:** "Add a rate limiter to the upload endpoint. 10 uploads per minute per tenant."
 
-**RED.** The test name and its failure message are artifact prose, so `strict` binds them.
+**RED.** The failure message is artifact prose, so `strict` binds it. The test's name follows
+the identifier word rules; descriptive test names are exempt from the cluster cap.
 
 ```python
 def test_rate_limiter_blocks_the_eleventh_upload_in_one_minute():
