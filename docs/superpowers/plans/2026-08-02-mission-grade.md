@@ -989,11 +989,13 @@ line breaks.
 - A new identifier with 4 concept words
 - Hedging with no stated cause
 - An emoji in a user-facing string
+- An idiom or metaphor in a user-facing string
 
 ### Nit — optional
 
 - A substitution-table word (`utilize` for `use`)
 - An emoji in an internal comment or docstring
+- An idiom or metaphor in an internal comment or docstring
 - A dropped article
 - A filler word (`basically`, `simply`, `just`)
 
