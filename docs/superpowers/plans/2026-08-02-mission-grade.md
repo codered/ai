@@ -1133,7 +1133,7 @@ def test_rate_limiter_blocks_the_eleventh_upload_in_one_minute():
     limiter = RateLimiter(limit=10, window_seconds=60)
     for _ in range(10):
         assert limiter.allow("tenant-a") is True
-    assert limiter.allow("tenant-a") is False, "The 11th upload must be refused."
+    assert limiter.allow("tenant-a") is False, "The limiter must refuse the 11th upload."
 ```
 
 Run it. Show the output:
@@ -1149,6 +1149,12 @@ That is a failure for the right reason. A test that fails on a typo proves nothi
 
 ```python
 class RateLimiter:
+    """Limits how many attempts one tenant can make in a sliding time window.
+
+    `limit` is the maximum number of attempts. `window_seconds` is the length of
+    the window in seconds. Both must be positive.
+    """
+
     def __init__(self, limit: int, window_seconds: int) -> None:
         assert limit > 0, "limit must be positive"
         assert window_seconds > 0, "window_seconds must be positive"
@@ -1176,7 +1182,7 @@ inputs validated (rule 7).
 
 ```python
     def allow(self, tenant: str) -> bool:
-        """Records an upload attempt and reports whether it is permitted.
+        """Reports whether an upload is permitted, and records it only when it is.
 
         Returns True when the tenant made fewer than `limit` attempts in the last
         `window_seconds`. Returns False otherwise, and does not record the attempt.
@@ -1189,7 +1195,7 @@ The error string the endpoint returns is `strict` — what failed, why, what to 
 
 ```python
 raise RateLimitExceeded(
-    f"The upload was refused. Tenant {tenant} reached {limit} uploads "
+    f"The limiter refused the upload. Tenant {tenant} reached {limit} uploads "
     f"in {window_seconds} seconds. Retry after {retry_after} seconds."
 )
 ```
@@ -1217,9 +1223,9 @@ include `compute_customer_subscription_proration_credit_amount` — 5 concept wo
 existing terms.
 
 ```python
-def handle_plan_change(request):
-    """Applies a plan change and returns the resulting invoice."""
-    change = _parse_plan_change(request)
+def handle_subscription_change(request):
+    """Applies a subscription change and returns the resulting invoice."""
+    change = _parse_subscription_change(request)
     credit = _compute_proration_credit(change)
     invoice = _build_invoice(change, credit)
     return invoice
