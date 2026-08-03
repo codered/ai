@@ -32,12 +32,6 @@ That is a failure for the right reason. A test that fails on a typo proves nothi
 
 ```python
 class RateLimiter:
-    """Limits how many attempts one tenant can make in a sliding time window.
-
-    `limit` is the maximum number of attempts. `window_seconds` is the length of
-    the window in seconds. Both must be positive.
-    """
-
     def __init__(self, limit: int, window_seconds: int) -> None:
         assert limit > 0, "limit must be positive"
         assert window_seconds > 0, "window_seconds must be positive"
@@ -61,9 +55,16 @@ class RateLimiter:
 Power of Ten as applied: bounded loop (rule 2), 14 lines (rule 4), three assertions (rule 5),
 inputs validated (rule 7).
 
-**REFACTOR.** Docstring in `clear` — conclusion first, no idioms, no emoji:
+**REFACTOR.** Docstrings in `clear` — conclusion first, no idioms, no emoji:
 
 ```python
+class RateLimiter:
+    """Limits how many attempts one tenant can make in a sliding time window.
+
+    `limit` is the maximum number of attempts. `window_seconds` is the length of
+    the window in seconds. Both must be positive.
+    """
+
     def allow(self, tenant: str) -> bool:
         """Reports whether an upload is permitted, and records it only when it is.
 
