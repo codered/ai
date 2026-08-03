@@ -330,3 +330,61 @@ before you mark any task done. Do not narrate the check in your output.
 9. Do the linters and type checkers pass at their strictest setting?
 
 If a check fails, fix it and re-run that check. Do not send output that fails a check.
+
+---
+
+## Going deeper
+
+This skill is self-contained. Everything above works with no other file loaded. The files below
+add depth when a task needs it. **If a path does not exist, say so in one line and continue with
+what you have** — never block on a missing optional file.
+
+**This skill's own references** — always present:
+
+| File | Load when |
+|---|---|
+| `references/ste-for-code.md` | Naming a new concept, writing a user-facing string, or applying the substitution table |
+| `references/prose-gate.md` | Classifying a Gate 6 finding, or deciding whether something is a finding |
+| `references/examples.md` | You want a worked end-to-end run before starting |
+
+**Sibling skills** — optional, may be absent:
+
+| Source | Provides |
+|---|---|
+| `skills/nfc/` | The full ASD-STE100 substitution table, `[STE]` versus `[NFC]` rule provenance, and the list of STE rules this skill does not implement |
+| `skills/applying-nasa-dod-coding-standards/` | Full gate prose, the complete rationalization-counter tables, and the long-form refusal template |
+| `skills/nasa-dod-code-review/` | The formal report workflow — CODEOWNERS setup, P0-P3 severity, and a written report under `reports/`. Load this only when the user explicitly asks for a written report file. |
+
+If the user has obtained the official ASD-STE100 specification and saved it at
+`skills/nfc/references/ASD-STE100.pdf`, check word choices against it in `strict` mode. It is
+not vendored with this repository.
+
+---
+
+## Scope
+
+This skill does not:
+
+- Change facts, conclusions, or recommendations to make them simpler than they are.
+- Remove real uncertainty. If something is genuinely unknown, say so plainly and say why.
+- Rewrite code, commands, output, or quoted material. Reproduce those exactly.
+- Rename existing identifiers as a side effect of unrelated work.
+- Certify ASD-STE100 conformance. It improves clarity. Do not claim more than that.
+
+---
+
+## Attribution
+
+The mechanical writing rules are derived from ASD-STE100 Simplified Technical English, Issue 9
+(January 2025), copyright ASD (AeroSpace and Defence Industries Association of Europe),
+maintained by the STE Maintenance Group. This skill implements the writing rules only. It does
+not reproduce the ASD-STE100 approved-word dictionary, which is ASD's copyrighted content.
+Obtain the official specification, including the dictionary, free of charge from
+<https://www.asd-ste100.org/STE_downloads.html>.
+
+This skill is an independent work and is not endorsed by or affiliated with ASD or the STEMG.
+
+Engineering standards derive from Holzmann, G. J. (2006), *The Power of Ten: Rules for
+Developing Safety-Critical Code*, NASA/JPL, IEEE Computer 39(6), 95-99; NIST SP 800-218
+(Secure Software Development Framework); the DISA Application Security and Development STIG;
+and the CERT Secure Coding Standards.
