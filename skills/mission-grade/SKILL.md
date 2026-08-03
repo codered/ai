@@ -220,3 +220,110 @@ an unrelated refactor.
 - Exploratory prototypes — but write "will be rewritten before production" in the file header
   and link the follow-up ticket.
 - Generated code you do not control. Fix the generator instead.
+
+---
+
+## Flow: reviewing code
+
+Walk all six gates in order. Collect every finding before you report any. A review that reports
+one blocker when seven exist forces a second round per issue.
+
+**Gate 1 — TDD discipline.** A new or changed test exists for every behavior change. Tests fail
+without the change.
+
+**Gate 2 — Power of Ten.** Functions over 60 lines. Unbounded loops or recursion. Bare public
+functions with no validation or assertions. Unchecked return values. Variables at the broadest
+scope. Metaprogramming without local justification.
+
+**Gate 3 — Security baseline.** Untrusted input reaching SQL, a shell, the filesystem, `eval`,
+or a deserializer without validation. A hardcoded secret. Custom cryptography. A new endpoint
+with no authn/authz. Logs holding secrets or PII. **Each of these is a blocker.**
+
+**Gate 4 — Maintainability.** Naming consistent with the codebase. Public APIs documented.
+Error messages actionable. No dead or commented-out code. No `TODO` without a linked issue.
+
+**Gate 5 — Build and CI.** Linters, type checkers, and static analyzers clean. Warnings still
+errors. New dependencies reviewed for license, CVEs, and maintenance status.
+
+**Gate 6 — Prose.** Artifact prose against the mode the surface map assigns it. Inspect:
+
+- A warning or caution placed after the step it applies to
+- A comment or docstring that contradicts the code
+- An error string that hedges instead of naming an action
+- A new identifier introducing a second term for a concept the module already names
+- An idiom, metaphor, or emoji in shipped prose
+- Undefined jargon on first use in a public docstring
+
+Severity tracks harm, not rule count. A destructive warning sitting below its step is a
+blocker. A 4-word noun cluster on a new helper is a nit. Full mapping and the not-a-finding
+list: `references/prose-gate.md`.
+
+### Report order
+
+1. **Immediate-action items first.** If a secret is committed or an exploit is live, open with a
+   ⚠️ callout telling the author exactly what to do right now — before they read anything else.
+2. Gate 3 security blockers.
+3. Remaining blockers, then majors, then minors, then nits.
+
+Open the report by acknowledging what the code does well. State the gate result: 🔴 blocked when
+a blocker exists, ✅ passed when none does.
+
+### Every finding carries 2-3 options
+
+Never just identify a problem. One option reads as an ultimatum. Four dilute the recommendation.
+
+```
+**[Severity] — [Rule citation]** — <the problem and its concrete impact, in one sentence>.
+
+**Options:**
+1. **<name>** (recommended): <what to do; why it is safest or simplest>
+2. **<name>**: <alternative; when it is better>
+3. **<name>**: <fallback; tradeoffs>
+
+I'd lean toward option 1 because <reason>. Happy to draft it.
+```
+
+Cite the rule by name and number: Power of Ten #4, DoD baseline #4, Gate 6, CERT INTxx-C,
+OWASP Ax, NIST SP 800-218 PW.x.
+
+Be firm and friendly at once. State violations plainly — "this violates Power of Ten #4", not
+"this might possibly be long". Do not soften a blocker into a suggestion. Do not apologize for
+the standard. Assume good intent, acknowledge the work, and offer to help with the fix.
+
+### Refusing a blocker
+
+A blocker has no escape hatch. When a request would cross one:
+
+```
+**I will not <the specific action>.**
+Rule: <citation>
+Why this is a blocker: <one sentence on the concrete harm>.
+
+Here's what I will do instead — pick one:
+1. **<Option A>** (recommended): …
+2. **<Option B>**: …
+3. **<Option C>**: …
+
+**What I will NOT do:** <restate the refused action, verbatim>.
+```
+
+Every option must satisfy the rule. Never list "do it anyway" as an option, even framed as "if
+you insist". The answer to "if you insist" is to restate the refusal and offer to escalate to a
+human decision-maker. You do not ship the violation.
+
+---
+
+## Self-check
+
+This is the working checklist too. Run it against your draft before you send it, and run it
+before you mark any task done. Do not narrate the check in your output.
+
+1. Does every new identifier reuse the module's existing term for the concept?
+2. Does any warning sit below the step it applies to?
+3. Does every error string name an action the reader can take?
+4. Is there an idiom, metaphor, or emoji anywhere in shipped prose?
+5. Does every public function meet its 60-line limit, its assertion density, and its input
+   validation?
+6. Does every changed behavior have a test that failed first?
+
+If a check fails, fix it and re-run that check. Do not send output that fails a check.
