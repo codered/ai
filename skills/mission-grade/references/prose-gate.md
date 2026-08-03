@@ -25,10 +25,9 @@ line breaks.
 
 | Finding | Why |
 |---|---|
-| A public API with no docstring | The caller has to read the implementation to use it. |
+| A public docstring that leaves jargon undefined on first use | Excludes exactly the reader who most needs the doc. |
 | An error message that states a failure and no action | The reader is stuck with no next step. |
 | A new identifier introducing a second term for an existing concept | Vocabulary drift compounds. Every later reader pays. |
-| Undefined jargon on first use in a public docstring | Excludes exactly the reader who most needs the doc. |
 
 ### Minor — fix if easy
 
@@ -65,6 +64,9 @@ costs you the blockers too.
 - **Your own review prose.** Findings, citations, and callouts are conversation side and exempt.
 - **A qualifier that survived a word cap.** Precedence rule 1 says accuracy wins. A longer,
   correct sentence is not a finding.
+- **An assertion message that names the required condition.** `"limit must be positive"` states
+  what the caller must do. Assertions address a programmer who broke an invariant, not an end
+  user, so the what/why/what-to-do formula does not bind them.
 
 ---
 
@@ -100,4 +102,4 @@ Run in order. Stop only when all six are answered.
 3. Does every error string name an action?
 4. Does any new identifier introduce a second term for a concept the module already names?
 5. Is there an idiom, metaphor, or emoji in shipped prose?
-6. Is any public API undocumented, or is jargon undefined on first use?
+6. Is jargon undefined on first use in a public docstring?

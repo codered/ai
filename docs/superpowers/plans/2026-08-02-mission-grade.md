@@ -121,7 +121,7 @@ any other rule.
 | Procedural comments (how-to, setup steps) | STE | `strict` |
 | Rationale comments (why a decision was made) | STE | `clear` |
 | Docstrings, module headers | STE | `clear` |
-| Identifiers | STE word rules only | see below |
+| Identifiers | STE word rules only | word rules only — see `references/ste-for-code.md` |
 | Error, log, and CLI-help strings | STE | `strict` |
 | Commit messages, PR descriptions | STE | `clear` |
 | Review findings, rule citations, callouts, gate status, option lists | NASA/DoD | exempt |
@@ -378,8 +378,9 @@ Non-negotiable on anything touching untrusted input, secrets, or authentication.
    missing import. Show the output.
 2. **GREEN** — Write the minimum code to pass. Nothing more. Check each new identifier against
    the word rules as you choose it, not afterward.
-3. **REFACTOR** — Improve structure with tests green. Write docstrings and comments to `clear`.
-   Write error strings to `strict`. Re-run the tests after every structural change.
+3. **REFACTOR** — Improve structure with tests green. Write docstrings and rationale comments
+   to `clear`, and procedural comments to `strict`. Write error strings to `strict`. Re-run the
+   tests after every structural change.
 4. **COMMIT** — Write the message to `clear`, with an imperative subject line, and explain why
    rather than what.
 
@@ -731,13 +732,14 @@ Three rules apply. Nothing else does — sentence length and voice are meaningle
 | Noun clusters of 3 or fewer | An identifier names at most 3 concept words. |
 | Same word for the same thing | One term per concept per module. Do not alternate `file`, `document`, and `record` for one thing. |
 
-**Counting concept words.** A leading verb (`get`, `set`, `build`, `parse`, `is`) and a trailing
-type or role word (`List`, `Map`, `Error`, `Handler`, `Config`) do not count toward the 3. The
-concept words in between do.
+**Counting concept words.** A leading verb (`get`, `set`, `build`, `parse`, `is`) and a
+trailing type or role word do not count toward the 3. The concept words in between do. The
+trailing words are exactly these: `List`, `Map`, `Set`, `Error`, `Handler`, `Config`. Treat
+that list as closed — a word not on it counts.
 
 - `getUserSessionToken` — verb `get`, concepts `user session token` = 3. Approved.
 - `getMainLandingGearDoorActuatorSeal` — 6 concept words. Rejected.
-- `parseInvoiceLineItemDiscountRuleSet` — 6 concept words. Rejected.
+- `parseInvoiceLineItemDiscountRuleSet` — 5 concept words. Rejected.
 
 **Fixing an over-long name** — extract the inner concept into a type, so the name shortens
 because the model got better:
@@ -813,7 +815,7 @@ Reasoning, caveats, and history come after.
 > # 1. Stop the worker.
 > # 2. Drain the queue.
 > # 3. Restart the worker.
-> # 4. Verify the offset.
+> # 4. Make sure the offset is correct.
 > ```
 
 **A warning goes before the step it applies to, never after.** This is the single highest-value
@@ -978,10 +980,9 @@ line breaks.
 
 | Finding | Why |
 |---|---|
-| A public API with no docstring | The caller has to read the implementation to use it. |
+| A public docstring that leaves jargon undefined on first use | Excludes exactly the reader who most needs the doc. |
 | An error message that states a failure and no action | The reader is stuck with no next step. |
 | A new identifier introducing a second term for an existing concept | Vocabulary drift compounds. Every later reader pays. |
-| Undefined jargon on first use in a public docstring | Excludes exactly the reader who most needs the doc. |
 
 ### Minor — fix if easy
 
@@ -1018,6 +1019,9 @@ costs you the blockers too.
 - **Your own review prose.** Findings, citations, and callouts are conversation side and exempt.
 - **A qualifier that survived a word cap.** Precedence rule 1 says accuracy wins. A longer,
   correct sentence is not a finding.
+- **An assertion message that names the required condition.** `"limit must be positive"` states
+  what the caller must do. Assertions address a programmer who broke an invariant, not an end
+  user, so the what/why/what-to-do formula does not bind them.
 
 ---
 
@@ -1053,7 +1057,7 @@ Run in order. Stop only when all six are answered.
 3. Does every error string name an action?
 4. Does any new identifier introduce a second term for a concept the module already names?
 5. Is there an idiom, metaphor, or emoji in shipped prose?
-6. Is any public API undocumented, or is jargon undefined on first use?
+6. Is jargon undefined on first use in a public docstring?
 ````
 
 - [ ] **Step 2: Verify — severity differentiation**
@@ -1167,11 +1171,12 @@ class RateLimiter:
             return False
         recent.append(now)
         self._hits[tenant] = recent
+        assert len(recent) <= self._limit, "recent must not exceed the limit"
         return True
 ```
 
-Power of Ten as applied: bounded loop (rule 2), 14 lines (rule 4), three assertions (rule 5),
-inputs validated (rule 7).
+Power of Ten as applied: bounded loop (rule 2), both functions under 60 lines (rule 4), two or
+more assertions each (rule 5), inputs validated (rule 7).
 
 **REFACTOR.** Docstrings in `clear` — conclusion first, no idioms, no emoji:
 

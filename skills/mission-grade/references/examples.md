@@ -49,11 +49,12 @@ class RateLimiter:
             return False
         recent.append(now)
         self._hits[tenant] = recent
+        assert len(recent) <= self._limit, "recent must not exceed the limit"
         return True
 ```
 
-Power of Ten as applied: bounded loop (rule 2), 14 lines (rule 4), three assertions (rule 5),
-inputs validated (rule 7).
+Power of Ten as applied: bounded loop (rule 2), both functions under 60 lines (rule 4), two or
+more assertions each (rule 5), inputs validated (rule 7).
 
 **REFACTOR.** Docstrings in `clear` — conclusion first, no idioms, no emoji:
 

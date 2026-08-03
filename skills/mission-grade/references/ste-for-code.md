@@ -18,13 +18,14 @@ Three rules apply. Nothing else does — sentence length and voice are meaningle
 | Noun clusters of 3 or fewer | An identifier names at most 3 concept words. |
 | Same word for the same thing | One term per concept per module. Do not alternate `file`, `document`, and `record` for one thing. |
 
-**Counting concept words.** A leading verb (`get`, `set`, `build`, `parse`, `is`) and a trailing
-type or role word (`List`, `Map`, `Error`, `Handler`, `Config`) do not count toward the 3. The
-concept words in between do.
+**Counting concept words.** A leading verb (`get`, `set`, `build`, `parse`, `is`) and a
+trailing type or role word do not count toward the 3. The concept words in between do. The
+trailing words are exactly these: `List`, `Map`, `Set`, `Error`, `Handler`, `Config`. Treat
+that list as closed — a word not on it counts.
 
 - `getUserSessionToken` — verb `get`, concepts `user session token` = 3. Approved.
 - `getMainLandingGearDoorActuatorSeal` — 6 concept words. Rejected.
-- `parseInvoiceLineItemDiscountRuleSet` — 6 concept words. Rejected.
+- `parseInvoiceLineItemDiscountRuleSet` — 5 concept words. Rejected.
 
 **Fixing an over-long name** — extract the inner concept into a type, so the name shortens
 because the model got better:
@@ -100,7 +101,7 @@ Reasoning, caveats, and history come after.
 > # 1. Stop the worker.
 > # 2. Drain the queue.
 > # 3. Restart the worker.
-> # 4. Verify the offset.
+> # 4. Make sure the offset is correct.
 > ```
 
 **A warning goes before the step it applies to, never after.** This is the single highest-value

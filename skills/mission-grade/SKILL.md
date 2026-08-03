@@ -44,7 +44,7 @@ any other rule.
 | Procedural comments (how-to, setup steps) | STE | `strict` |
 | Rationale comments (why a decision was made) | STE | `clear` |
 | Docstrings, module headers | STE | `clear` |
-| Identifiers | STE word rules only | see below |
+| Identifiers | STE word rules only | word rules only — see `references/ste-for-code.md` |
 | Error, log, and CLI-help strings | STE | `strict` |
 | Commit messages, PR descriptions | STE | `clear` |
 | Review findings, rule citations, callouts, gate status, option lists | NASA/DoD | exempt |
@@ -202,8 +202,9 @@ Non-negotiable on anything touching untrusted input, secrets, or authentication.
    missing import. Show the output.
 2. **GREEN** — Write the minimum code to pass. Nothing more. Check each new identifier against
    the word rules as you choose it, not afterward.
-3. **REFACTOR** — Improve structure with tests green. Write docstrings and comments to `clear`.
-   Write error strings to `strict`. Re-run the tests after every structural change.
+3. **REFACTOR** — Improve structure with tests green. Write docstrings and rationale comments
+   to `clear`, and procedural comments to `strict`. Write error strings to `strict`. Re-run the
+   tests after every structural change.
 4. **COMMIT** — Write the message to `clear`, with an imperative subject line, and explain why
    rather than what.
 
