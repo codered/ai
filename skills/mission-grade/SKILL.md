@@ -107,3 +107,116 @@ unless the user asks — a sweeping rename is its own pull request.
 
 **Quoted material is never rewritten.** STE applies to prose you author, never to code, output,
 or text you cite.
+
+---
+
+## The Iron Law
+
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
+
+Write a failing test, watch it fail for the right reason, write the minimum code to pass, then
+refactor with tests green. Every cycle. No exception for "simple", "urgent", or "obvious".
+
+Show the failing output in your reply. The red test is the receipt that proves the bug was
+reproduced, and the same output turning green is the proof the fix worked.
+
+When the user offers a reason to skip it — "too simple to test", "I already tested it
+manually", "I'll add the test after", "it's just a prototype", "no time" — quote their exact
+words back, give the counter, then give 2-3 options that all keep the test. Do not lecture.
+
+| Excuse | Counter |
+|---|---|
+| "Too simple to test" | Simple code breaks too. The test takes 30 seconds. |
+| "I already tested it manually" | Manual tests do not run in CI. They lie about regressions. |
+| "I'll add the test after" | You will not. If you do, it passes trivially and proves nothing. |
+| "It's just a prototype" | Prototypes ship. Test it, or write "will be rewritten" in the header. |
+| "The change is obvious" | Obvious to whom, at 3 a.m., six months from now? |
+| "No time" | Debugging the untested version costs 10x more time. |
+
+---
+
+## NASA Power of Ten
+
+1. **Simple control flow.** No `goto`, no `setjmp`/`longjmp`, no unbounded recursion. Bound any
+   recursion you need and document the bound.
+2. **Bounded loops.** Every loop has a provable upper bound. Prefer a counted loop over
+   `while True` with an internal break as the primary exit.
+3. **Minimize dynamic allocation after initialization.** Allocate up front where latency or
+   reliability matters. Reuse buffers on hot paths.
+4. **Functions of 60 lines or fewer.** One screen, one function, one job. If you genuinely need
+   more, document why and extract helpers anyway.
+5. **Two or more meaningful assertions per function.** Preconditions, postconditions,
+   invariants. Assertions are executable documentation.
+6. **Minimum scope.** Declare variables close to use. Immutable by default. No module-level
+   mutable state without strong justification.
+7. **Validate inputs, check return values.** Every public function validates its parameters.
+   Every caller checks what it gets back, including `Option`, `Result`, and error types. Silent
+   failure is a bug.
+8. **Limit metaprogramming.** No clever macros, decorators, reflection, or monkey-patching
+   without a clear, local, documented win. Code should read linearly.
+9. **Clear ownership of references.** One level of dereferencing per expression. Prefer values
+   over references, and `Option`/`Result` over nullable pointers.
+10. **Zero warnings at maximum strictness.** Lint and type-check at the strictest setting the
+    toolchain supports. Warnings are errors in CI.
+
+| Language | Minimum toolchain |
+|---|---|
+| TypeScript | `strict: true`, `noUncheckedIndexedAccess`, ESLint |
+| Python | `ruff`, `mypy --strict`, `bandit` |
+| Rust | `cargo clippy -- -D warnings`, `cargo deny`, `cargo audit` |
+| Go | `go vet`, `staticcheck`, `golangci-lint` |
+| C / C++ | `-Wall -Wextra -Wpedantic -Werror`, `clang-tidy`, ASan + UBSan |
+| Java / Kotlin | Error Prone, SpotBugs, Detekt |
+
+---
+
+## DoD secure-coding baseline
+
+Non-negotiable on anything touching untrusted input, secrets, or authentication.
+
+1. **Input validation** — type, length, range, and format at every trust boundary.
+2. **Output encoding** — context-appropriate for HTML, SQL, shell, LDAP, or JSON.
+3. **Authentication and authorization** — verify identity, enforce least privilege, re-check on
+   every request.
+4. **Secrets management** — never hardcode. Use a vault, secret manager, or environment
+   variable. Rotate. Never log.
+5. **Cryptography** — vetted libraries only. No custom crypto. Modern algorithms, proper key
+   management.
+6. **Error handling** — fail closed. Never leak a stack trace or an internal path to a user.
+7. **Logging and audit** — log security-relevant events. Never log secrets or PII.
+8. **Memory safety** — prefer memory-safe languages. In C/C++ use bounds-checked APIs and
+   sanitizers.
+9. **Concurrency safety** — immutable by default, explicit synchronization, no shared mutable
+   state without a documented lock.
+10. **Supply chain** — pin dependencies, verify signatures, scan for CVEs, generate an SBOM.
+
+---
+
+## Flow: writing code
+
+1. **RED** — Write the failing test. Its name and its failure message are artifact prose, so
+   `strict` binds them. Run it. Confirm it fails for the right reason, not on a typo or a
+   missing import. Show the output.
+2. **GREEN** — Write the minimum code to pass. Nothing more. Check each new identifier against
+   the word rules as you choose it, not afterward.
+3. **REFACTOR** — Improve structure with tests green. Write docstrings and comments to `clear`.
+   Write error strings to `strict`. Re-run the tests after every structural change.
+4. **COMMIT** — Write the message to `clear`, with an imperative subject line, and explain why
+   rather than what.
+
+## Flow: refactoring
+
+Tests must exist before the refactor starts. A refactor without tests is a rewrite.
+
+Behavior preservation includes names. STE word rules bind only concepts this change introduces.
+Leave existing symbols alone, even when they break cluster length. Do not bundle a rename into
+an unrelated refactor.
+
+## When not to use this skill
+
+- Throwaway scripts under about 20 lines with no maintenance expected.
+- Exploratory prototypes — but write "will be rewritten before production" in the file header
+  and link the follow-up ticket.
+- Generated code you do not control. Fix the generator instead.
