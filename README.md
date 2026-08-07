@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-11-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-12-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -254,6 +254,19 @@ The two standards contradict each other in specific places, and one line resolve
 | **Code** | Power of Ten · DoD secure-coding baseline · TDD Iron Law — no production code without a failing test |
 | **Prose** | Procedural comments and error strings `strict` · docstrings and commits `clear` · identifiers by word rules |
 | **Review** | Six gates — the five NASA/DoD gates plus a prose gate, severity by harm rather than rule count |
+
+### `#️⃣` [hashline](skills/hashline/)
+
+Teaches an agent to edit files by **content hash instead of line number or string match**. Every line read back carries an `xxh32` anchor (`2:a3`); every patch cites the anchor it targets. If the file drifted since the read, the hash no longer matches and the edit is rejected — instead of a string replace quietly landing on the wrong occurrence, or a line number that moved two commits ago.
+
+Wraps the `hashline` MCP server, which any harness with native MCP support can register directly. For [Prime Agent](skills/hashline/references/prime-agent-setup.md) — whose MCP support reaches only remote HTTP servers, and whose single-tool design has no edit tool to hook — the skill also ships a Python package that speaks the same stdio server from the IPython kernel.
+
+| | |
+|---|---|
+| **Trigger** | Any file read, create, edit, delete, or rename in a project where hashline is installed |
+| **Loop** | `read` for anchors → `patch` citing `line:hash` → patch result is the re-read file, so it verifies itself |
+| **Ops** | `SWAP` · `DEL` · `INS.PRE/POST/HEAD/TAIL` · `SWAP.BLK` / `DEL.BLK` for whole syntactic blocks · `dry_run` |
+| **Setup** | MCP: `{"command": "hashline", "args": ["mcp"]}` · Prime Agent: `cp -r skills/hashline ~/.prime/agent/skills/` |
 
 ---
 
