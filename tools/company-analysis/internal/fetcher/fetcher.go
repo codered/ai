@@ -127,3 +127,72 @@ func FetchSummaryData(ticker string) (*models.EarningsData, error) {
 
 	return earningsData, nil
 }
+
+// FetchNews retrieves recent news for a ticker
+func FetchNews(ticker string) ([]*models.NewsItem, error) {
+	url := fmt.Sprintf("%s/v1/finance/feed/tickerNews?tickers=%s", yahooFinanceBaseURL, ticker)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch news: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("yahoo finance news API returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read news response: %w", err)
+	}
+
+	var newsResult map[string]interface{}
+	if err := json.Unmarshal(body, &newsResult); err != nil {
+		return nil, fmt.Errorf("failed to parse news JSON: %w", err)
+	}
+
+	// Parse news items
+	var newsItems []*models.NewsItem
+
+	// The tickerNews API returns a structure like: {"items": [{"list": [...]}]}
+	// Or directly an array. We handle the typical structure:
+	if response, ok := newsResult["response"].(map[string]interface{}); ok {
+		if result, ok := response["result"].([]interface{}); ok && len(result) > 0 {
+			items := result[0].(map[string]interface{})["items"].([]interface{})
+			for _, item := range items {
+				article := item.(map[string]interface{})
+				headline := ""
+				if h, ok := article["title"].(string); ok {
+					headline = h
+				}
+				summary := ""
+				if s, ok := article["summary"].(string); ok {
+					summary = s
+				}
+				source := ""
+				if src, ok := article["publisher"].(string); ok {
+					source = src
+				}
+				publishTime := ""
+				if pt, ok := article["providerPublishTime"].(float64); ok {
+					t := time.Unix(int64(pt), 0)
+					publishTime = t.Format(time.RFC3339)
+				}
+				nurl := ""
+				if u, ok := article["link"].(string); ok {
+					nurl = u
+				}
+
+				newsItems = append(newsItems, &models.NewsItem{
+					Headline:    headline,
+					Summary:     summary,
+					Source:      source,
+					PublishTime: publishTime,
+					Url:         nurl,
+				})
+			}
+		}
+	}
+
+	return newsItems, nil
+}
