@@ -40,7 +40,7 @@ these to `~/.prime/agent/AGENTS.md` (or a project `AGENTS.md`):
 # Editing Rules
 - Always route file reads, creates, edits, deletes, and renames through the `hashline` skill (`import hashline; await hashline.read(...)` / `await hashline.patch(...)`). It is an MCP server over stdio; see its SKILL.md for the patch syntax.
 - Do not edit files with `edit`, `open(...).write()`, `sed`, or shell heredocs. Those bypass hashline's drift check.
-- Always read the target file with `await hashline.read(path)` immediately before patching, and copy `line:hash` anchors verbatim from that read. Never invent or reuse a stale anchor.
+- Always read the target file immediately before patching — `await hashline.read("src/auth.py")`, where the argument is named `file`, never `path` — and copy `line:hash` anchors verbatim from that read. Never invent or reuse a stale anchor.
 - hashline reports failures as a returned string starting with `Error:`, not as an exception. Read the result of every patch before assuming the edit landed; on a drift rejection, re-read and rebuild the patch.
 ```
 
