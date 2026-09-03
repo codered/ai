@@ -96,6 +96,9 @@ the publisher and the link. The RSS headline feed gives the article summary,
 which the sentiment analysis needs. When the RSS fetch fails, the headlines stay
 and the summaries are empty, so more articles classify as neutral.
 
+Each headline in the report is a Markdown link to the article, so the user can
+open the source. An item that arrives without a link stays as plain text.
+
 ## Bundled files
 
 All of these ship with the plugin under `tools/company-analysis/`:
