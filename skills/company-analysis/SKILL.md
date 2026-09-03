@@ -20,18 +20,26 @@ output.
 
 ## Process
 
-Run this single pipeline from the `tools/company-analysis` directory. Replace
-`<TICKER>` with the symbol, such as `AAPL`.
+Run this one command. Replace `<TICKER>` with the symbol, such as `AAPL`.
 
 ```bash
-cd tools/company-analysis
-go run . -ticker <TICKER> | python3 generate_report.py
+"${CLAUDE_PLUGIN_ROOT}/tools/company-analysis/run.sh" <TICKER>
+```
+
+`run.sh` finds its own directory, so the command works from any working
+directory. If `${CLAUDE_PLUGIN_ROOT}` is empty, you are in a checkout of the
+repository instead of a plugin install. Use this path:
+
+```bash
+./tools/company-analysis/run.sh <TICKER>
 ```
 
 The command prints the finished Markdown report. Show that output to the user.
 
-The Go tool prints JSON. The Python script converts that JSON into the report.
-Neither step needs help from you.
+`run.sh` runs the Go tool, which prints JSON, and pipes that JSON into
+`generate_report.py`, which writes the report. It uses the Go toolchain when it
+is present and the bundled binary when it is not. Neither step needs help from
+you.
 
 ## Rules
 
@@ -49,10 +57,14 @@ Your own wording would break that.
 
 ## Prerequisites
 
-- **Go 1.25 or later.** The first run downloads the module dependencies.
-- **Python 3.6 or later.** `generate_report.py` imports only the standard
-  library (`json`, `sys`, `argparse`). There is nothing to `pip install`. Do not
-  create a virtual environment for it.
+- **Python 3.6 or later.** Required. `generate_report.py` imports only the
+  standard library (`json`, `sys`, `argparse`). There is nothing to
+  `pip install`. Do not create a virtual environment for it.
+- **Go 1.25 or later.** Optional. `run.sh` uses it when it is present, and the
+  first run downloads the module dependencies. Without Go, `run.sh` falls back
+  to the bundled `company-analysis` binary, which is Linux x86-64 only.
+
+`run.sh` reports a missing prerequisite and exits with status 3.
 
 ## If a step fails
 
@@ -61,7 +73,7 @@ When the Go tool cannot fetch the price data, it prints a JSON object with an
 prints one line, and stops before it writes a report:
 
 ```
-$ go run . -ticker ZZZZ | python3 generate_report.py
+$ ./tools/company-analysis/run.sh ZZZZ
 error: fetch price data for ZZZZ: yahoo finance returned status 404
 ```
 
@@ -78,6 +90,18 @@ instead. A report built on invented data is worse than no report.
 
 Earnings and news are optional. If those fetches fail, the Go tool logs a
 warning to stderr and still prints usable JSON. Let the pipeline continue.
+
+## Bundled files
+
+All of these ship with the plugin under `tools/company-analysis/`:
+
+| File | Role |
+|---|---|
+| `run.sh` | The entry point. Run this. |
+| `main.go`, `internal/` | The data fetcher and the simulator. |
+| `generate_report.py` | Turns the JSON into the Markdown report. |
+| `company-analysis` | Prebuilt Linux x86-64 binary, used when Go is absent. |
+| `go.mod`, `go.sum` | Go module definition. |
 
 ## Simulation Parameters
 
