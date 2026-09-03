@@ -8,7 +8,9 @@ description: >
 
 # Company Analysis & Simulation Skill
 
-Performs a deep analysis for a given company using a Go-based data fetcher and simulation tool, followed by Host LLM sentiment analysis and report generation.
+Two bundled scripts produce the report. The Go tool fetches the data and runs the
+simulations. The Python script assembles the Markdown. Run both and show the
+output.
 
 ## Usage
 
@@ -18,23 +20,88 @@ Performs a deep analysis for a given company using a Go-based data fetcher and s
 
 ## Process
 
-1. **Invoke Go Data Fetcher & Simulator**: Run the `company-analysis` Go tool with the company ticker symbol:
-   ```bash
-   go run ./tools/company-analysis/main.go -ticker <TICKER>
-   ```
-   This fetches structured financial data (prices, earnings, news) and performs trade simulations, outputting a structured JSON payload.
+Run this one command. Replace `<TICKER>` with the symbol, such as `AAPL`.
 
-2. **Host LLM Report Generation**: The Host LLM (this AI) receives the structured JSON payload and:
-   - Performs sentiment analysis on the news headlines/summaries and earnings data to identify **bullish** and **bearish** themes.
-   - Extracts or infers **analyst recommendations** from the fetched news and summary data.
-   - Assembles the final comprehensive Markdown report including:
-     - Disclaimer: "This is not financial advice, it's a report and simulation."
-     - Company Overview and key financial metrics.
-     - Stock Price Performance (1d, 1w, 3m, YTD changes).
-     - Earnings Summary.
-     - News & Sentiment Analysis (bullish and bearish highlights).
-     - Analyst Recommendations.
-     - Trade Simulations (detailed breakdown for 5, 10, and 25 share purchases, including fee and tax scenarios).
+```bash
+"${CLAUDE_PLUGIN_ROOT}/tools/company-analysis/run.sh" <TICKER>
+```
+
+`run.sh` finds its own directory, so the command works from any working
+directory. If `${CLAUDE_PLUGIN_ROOT}` is empty, you are in a checkout of the
+repository instead of a plugin install. Use this path:
+
+```bash
+./tools/company-analysis/run.sh <TICKER>
+```
+
+The command prints the finished Markdown report. Show that output to the user.
+
+`run.sh` runs the Go tool, which prints JSON, and pipes that JSON into
+`generate_report.py`, which writes the report. It uses the Go toolchain when it
+is present and the bundled binary when it is not. Neither step needs help from
+you.
+
+## Rules
+
+**Do not write any part of the report yourself.**
+
+- Do not read the JSON and compose your own Markdown.
+- Do not add your own sentiment analysis. `generate_report.py` does this.
+- Do not add your own analyst recommendations. `generate_report.py` does this.
+- Do not calculate prices, changes, fees, taxes, or profits. The Go tool does this.
+- Do not add sections, remove sections, or reword the output.
+- Do not summarize the report in place of showing it.
+
+The report is deterministic. Two runs with the same data give the same text.
+Your own wording would break that.
+
+## Prerequisites
+
+- **Python 3.6 or later.** Required. `generate_report.py` imports only the
+  standard library (`json`, `sys`, `argparse`). There is nothing to
+  `pip install`. Do not create a virtual environment for it.
+- **Go 1.25 or later.** Optional. `run.sh` uses it when it is present, and the
+  first run downloads the module dependencies. Without Go, `run.sh` falls back
+  to the bundled `company-analysis` binary, which is Linux x86-64 only.
+
+`run.sh` reports a missing prerequisite and exits with status 3.
+
+## If a step fails
+
+When the Go tool cannot fetch the price data, it prints a JSON object with an
+`error` field and exits with status 1. `generate_report.py` sees that field,
+prints one line, and stops before it writes a report:
+
+```
+$ ./tools/company-analysis/run.sh ZZZZ
+error: fetch price data for ZZZZ: yahoo finance returned status 404
+```
+
+Report that line to the user. Common causes:
+
+| Error text | Cause |
+|---|---|
+| `status 404` | The ticker symbol does not exist. |
+| `status 429` after retries | Yahoo Finance is rate limiting. Wait, then retry. |
+| `fetch crumb` | Yahoo Finance blocked the session token request. |
+
+Do not substitute a placeholder price and do not write the report by hand
+instead. A report built on invented data is worse than no report.
+
+Earnings and news are optional. If those fetches fail, the Go tool logs a
+warning to stderr and still prints usable JSON. Let the pipeline continue.
+
+## Bundled files
+
+All of these ship with the plugin under `tools/company-analysis/`:
+
+| File | Role |
+|---|---|
+| `run.sh` | The entry point. Run this. |
+| `main.go`, `internal/` | The data fetcher and the simulator. |
+| `generate_report.py` | Turns the JSON into the Markdown report. |
+| `company-analysis` | Prebuilt Linux x86-64 binary, used when Go is absent. |
+| `go.mod`, `go.sum` | Go module definition. |
 
 ## Simulation Parameters
 
@@ -44,3 +111,4 @@ Performs a deep analysis for a given company using a Go-based data fetcher and s
 - **Tax Scenarios**:
   - Short-term gains (held < 1 year): Flat default rate of ~24%
   - Long-term gains (held ≥ 1 year): Flat default rate of ~15%
+- **Sell price**: current price × 1.10, a hypothetical +10% gain
