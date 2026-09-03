@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	FeeRobinhood     = 0.0
-	FeeTraditional   = 4.95
-	TaxShortTerm     = 0.24
-	TaxLongTerm      = 0.15
+	FeeRobinhood   = 0.0
+	FeeTraditional = 4.95
+	TaxShortTerm   = 0.24
+	TaxLongTerm    = 0.15
 )
 
 // CalculateSimulations generates simulation results for given quantities and price points
@@ -49,13 +49,14 @@ func CalculateSimulations(quantities []int, currentPrice float64, sellPrice floa
 				netProfit := grossProfit - fees - taxes
 
 				results = append(results, &models.SimulationResult{
-					Quantity:    qty,
-					FeeScenario: fs.Name,
-					TaxScenario: ts.Name,
-					GrossProfit: grossProfit,
-					Fees:        fees,
-					Taxes:       taxes,
-					NetProfit:   netProfit,
+					Quantity:     qty,
+					FeeScenario:  fs.Name,
+					TaxScenario:  ts.Name,
+					PurchaseCost: buyCost,
+					GrossProfit:  grossProfit,
+					Fees:         fees,
+					Taxes:        taxes,
+					NetProfit:    netProfit,
 				})
 			}
 		}

@@ -1,7 +1,7 @@
 {
   "name": "codered",
   "description": "Give your AI coding agent institutional knowledge — skills for code review, planning, analysis, and team workflows",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": {
     "name": "Harsh Singh"
   },

@@ -91,6 +91,11 @@ instead. A report built on invented data is worse than no report.
 Earnings and news are optional. If those fetches fail, the Go tool logs a
 warning to stderr and still prints usable JSON. Let the pipeline continue.
 
+News arrives from two Yahoo endpoints. The search endpoint gives the headline,
+the publisher and the link. The RSS headline feed gives the article summary,
+which the sentiment analysis needs. When the RSS fetch fails, the headlines stay
+and the summaries are empty, so more articles classify as neutral.
+
 ## Bundled files
 
 All of these ship with the plugin under `tools/company-analysis/`:
@@ -111,4 +116,5 @@ All of these ship with the plugin under `tools/company-analysis/`:
 - **Tax Scenarios**:
   - Short-term gains (held < 1 year): Flat default rate of ~24%
   - Long-term gains (held ≥ 1 year): Flat default rate of ~15%
+- **Cost to buy**: quantity × current price, before fees. Shown as its own column.
 - **Sell price**: current price × 1.10, a hypothetical +10% gain
