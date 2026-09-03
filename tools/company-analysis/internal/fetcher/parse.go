@@ -2,8 +2,11 @@ package fetcher
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"strings"
 	"time"
+	"unicode"
 
 	"company-analysis/internal/models"
 )
@@ -264,4 +267,48 @@ func parseSearchNews(body []byte) ([]*models.NewsItem, error) {
 	}
 
 	return newsItems, nil
+}
+
+// rssFeed models the parts of the Yahoo Finance RSS headline feed that this
+// tool reads. The feed is the only Yahoo endpoint that carries an article
+// description.
+type rssFeed struct {
+	Items []struct {
+		Title       string `xml:"title"`
+		Description string `xml:"description"`
+	} `xml:"channel>item"`
+}
+
+// parseRSSDescriptions maps each normalised headline in the feed to its
+// description. An item without both fields is skipped.
+func parseRSSDescriptions(body []byte) (map[string]string, error) {
+	var feed rssFeed
+	if err := xml.Unmarshal(body, &feed); err != nil {
+		return nil, fmt.Errorf("parse news RSS: %w", err)
+	}
+
+	descriptions := make(map[string]string, len(feed.Items))
+	for _, item := range feed.Items {
+		title := normaliseHeadline(item.Title)
+		description := strings.TrimSpace(item.Description)
+		if title == "" || description == "" {
+			continue
+		}
+		descriptions[title] = description
+	}
+
+	return descriptions, nil
+}
+
+// normaliseHeadline reduces a headline to a comparison key. The search endpoint
+// and the RSS feed punctuate the same headline differently, so the key keeps
+// letters and digits only, in lower case.
+func normaliseHeadline(headline string) string {
+	var builder strings.Builder
+	for _, r := range strings.ToLower(headline) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
 }

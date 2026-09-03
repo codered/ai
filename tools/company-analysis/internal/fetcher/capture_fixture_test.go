@@ -28,6 +28,12 @@ func TestCaptureFixtures(t *testing.T) {
 	}
 	os.WriteFile("testdata/search_aapl.json", news, 0o644)
 
+	rss, err := defaultClient.get(ctx, yahooRSSHeadlineURL+"?s=AAPL&region=US&lang=en-US")
+	if err != nil {
+		t.Fatalf("rss: %v", err)
+	}
+	os.WriteFile("testdata/rss_aapl.xml", rss, 0o644)
+
 	crumb, err := defaultClient.getCrumb(ctx)
 	if err != nil {
 		t.Fatalf("crumb: %v", err)

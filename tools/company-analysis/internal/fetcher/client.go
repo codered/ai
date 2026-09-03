@@ -23,6 +23,8 @@ const (
 	// yahooCookieURL sets the session cookie that the crumb endpoint requires.
 	yahooCookieURL = "https://fc.yahoo.com/"
 	yahooCrumbURL  = yahooFinanceBaseURL + "/v1/test/getcrumb"
+	// yahooRSSHeadlineURL serves the only feed that carries article summaries.
+	yahooRSSHeadlineURL = "https://feeds.finance.yahoo.com/rss/2.0/headline"
 )
 
 const (

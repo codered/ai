@@ -43,10 +43,15 @@ func TestCalculateSimulations(t *testing.T) {
 	// Taxes (Short-term 24%) = 75.0 * 0.24 = 18.0
 	// Net profit = 75.0 - 0.0 - 18.0 = 57.0
 
+	expectedPurchaseCost := 750.0
 	expectedGrossProfit := 75.0
 	expectedFees := 0.0
 	expectedTaxes := 75.0 * 0.24
 	expectedNetProfit := 75.0 - 0.0 - expectedTaxes
+
+	if result5RobinhoodShort.PurchaseCost != expectedPurchaseCost {
+		t.Errorf("expected purchase cost %v, got %v", expectedPurchaseCost, result5RobinhoodShort.PurchaseCost)
+	}
 
 	if result5RobinhoodShort.GrossProfit != expectedGrossProfit {
 		t.Errorf("expected gross profit %v, got %v", expectedGrossProfit, result5RobinhoodShort.GrossProfit)

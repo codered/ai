@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"company-analysis/internal/models"
 )
 
 func readFixture(t *testing.T, name string) []byte {
@@ -202,5 +204,58 @@ func TestPercentChangeHandlesZeroBaseline(t *testing.T) {
 	}
 	if got := percentChange(110, 100); got != 10 {
 		t.Errorf("percentChange(110, 100) = %v, want 10", got)
+	}
+}
+
+func TestParseRSSDescriptionsReadsSummaries(t *testing.T) {
+	descriptions, err := parseRSSDescriptions(readFixture(t, "rss_aapl.xml"))
+	if err != nil {
+		t.Fatalf("parseRSSDescriptions returned an error: %v", err)
+	}
+	if len(descriptions) == 0 {
+		t.Fatal("descriptions is empty, want one entry per feed item")
+	}
+	for headline, summary := range descriptions {
+		if headline == "" || summary == "" {
+			t.Errorf("entry %q -> %q, want both parts non empty", headline, summary)
+		}
+	}
+}
+
+func TestParseRSSDescriptionsRejectsNonXML(t *testing.T) {
+	if _, err := parseRSSDescriptions([]byte("Too Many Requests")); err == nil {
+		t.Error("expected an error for a body that is not XML")
+	}
+}
+
+func TestNormaliseHeadlineIgnoresPunctuationAndCase(t *testing.T) {
+	// The search endpoint and the RSS feed punctuate the same headline
+	// differently, so both forms must reduce to one key.
+	fromSearch := normaliseHeadline("Zscaler’s Next Earnings Report: Here's Why.")
+	fromRSS := normaliseHeadline("Zscaler's Next Earnings Report - Here's Why")
+	if fromSearch != fromRSS {
+		t.Errorf("keys differ: %q vs %q", fromSearch, fromRSS)
+	}
+}
+
+func TestApplySummariesFillsOnlyEmptySummaries(t *testing.T) {
+	items := []*models.NewsItem{
+		{Headline: "Shares Are Falling"},
+		{Headline: "Unmatched Headline"},
+		{Headline: "Already Set", Summary: "keep me"},
+	}
+	applySummaries(items, map[string]string{
+		normaliseHeadline("Shares Are Falling"): "The stock dropped after hours.",
+		normaliseHeadline("Already Set"):        "overwrite me",
+	})
+
+	if items[0].Summary != "The stock dropped after hours." {
+		t.Errorf("item 0 summary = %q, want the feed description", items[0].Summary)
+	}
+	if items[1].Summary != "" {
+		t.Errorf("item 1 summary = %q, want empty for an unmatched headline", items[1].Summary)
+	}
+	if items[2].Summary != "keep me" {
+		t.Errorf("item 2 summary = %q, want the existing value kept", items[2].Summary)
 	}
 }
