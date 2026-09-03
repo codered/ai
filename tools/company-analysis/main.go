@@ -20,25 +20,28 @@ func main() {
 		log.Fatal("ticker argument is required")
 	}
 
-	// Fetch price data
+	// Price data is mandatory. The simulations below multiply the price, so a
+	// substitute value would produce a report that looks correct but is not.
 	priceChanges, currentPrice, err := fetcher.FetchPriceData(*ticker)
 	if err != nil {
-		outputError(fmt.Sprintf("failed to fetch price data: %v", err))
-		return
+		outputError(*ticker, err.Error())
+	}
+	if currentPrice <= 0 {
+		outputError(*ticker, fmt.Sprintf("price is %v, which is not usable", currentPrice))
 	}
 
 	// Fetch summary and earnings data
 	earningsData, err := fetcher.FetchSummaryData(*ticker)
 	if err != nil {
-		log.Printf("warning: failed to fetch summary data: %v", err)
-		// Continue without earnings data
+		log.Printf("warning: failed to fetch summary data: %v, using defaults", err)
+		earningsData = &models.EarningsData{}
 	}
 
 	// Fetch news
 	newsItems, err := fetcher.FetchNews(*ticker)
 	if err != nil {
-		log.Printf("warning: failed to fetch news: %v", err)
-		// Continue without news
+		log.Printf("warning: failed to fetch news: %v, using empty list", err)
+		newsItems = nil
 	}
 
 	// Run simulations
@@ -69,9 +72,10 @@ func outputJSON(data *models.AnalysisData) {
 	fmt.Println(string(jsonBytes))
 }
 
-func outputError(msg string) {
+func outputError(ticker, msg string) {
 	errorData := &models.AnalysisData{
-		Error: msg,
+		Ticker: ticker,
+		Error:  msg,
 	}
 	jsonBytes, err := json.MarshalIndent(errorData, "", "  ")
 	if err != nil {
