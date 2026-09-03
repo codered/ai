@@ -64,10 +64,27 @@ def compare_eps(actual, estimate):
     return "beat" if actual > estimate else "missed"
 
 
+def format_link(headline, url):
+    """Render the headline as a Markdown link, or as plain text without a URL.
+
+    Square brackets in the headline end the link text early, so they are
+    escaped. A URL that holds a space or a parenthesis ends the destination
+    early, so it is wrapped in angle brackets. Only http and https links are
+    used, because any other scheme in the feed is not a readable article.
+    """
+    text = headline.replace("[", "\\[").replace("]", "\\]")
+    url = (url or "").strip()
+    if not url.startswith(("http://", "https://")):
+        return text
+    if any(char in url for char in " ()<>"):
+        url = "<%s>" % url.replace("<", "%3C").replace(">", "%3E")
+    return f"[{text}]({url})"
+
+
 def format_headline(item):
     """Render one news item as a Markdown bullet, with its summary when present."""
     source = item.get("source") or "N/A"
-    headline = item.get("headline", "")
+    headline = format_link(item.get("headline", ""), item.get("url"))
     summary = " ".join((item.get("summary") or "").split())
     if len(summary) > SUMMARY_LIMIT:
         summary = summary[: SUMMARY_LIMIT - 1].rstrip() + "\u2026"
