@@ -78,6 +78,23 @@ class TestDrift(ScratchRepo):
                 ed.commit()
         self.assertIn("retries=9", self.read("client.py"))
 
+    def test_hashline_detected_drift_through_gate_run(self):
+        concurrent_content = "def send(req):\n    return _post(req, retries=9)\n"
+
+        def apply():
+            with Editor("client.py") as ed:
+                anchor = ed.locate("    return _post(req)")
+                # Concurrent writer modifies the file after our read but before commit.
+                self.write("client.py", concurrent_content)
+                ed.swap(anchor, ["    return _post(req, retries=3)"])
+
+        def verify():
+            gate.structural("retries=3 present", lambda: taskkit.file_contains("client.py", "retries=3"))
+
+        self.assertEqual(gate.run(apply, verify), 3)
+        # Verify nothing was written: concurrent content persists
+        self.assertEqual(self.read("client.py"), concurrent_content)
+
 
 if __name__ == "__main__":
     unittest.main()
