@@ -80,7 +80,8 @@ regenerate or edit them. Start each task from `references/task_template.py`.
 never the plan directory. If you're running from elsewhere, use
 `python3 docs/plans/<dir>/run.py --status --repo-root /path/to/repo` to override the target directory.
 Every gate must **fail cleanly** (exit 1) rather than error. A gate that errors
-is a defect in the plan — fix it before handing over.
+is a defect in the plan — fix it before handing over. See `references/hashline_rules.md`
+(the exit contract section) for how to distinguish a clean gate failure from a crash.
 
 ## Editing Rules
 

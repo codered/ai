@@ -32,9 +32,15 @@ conflict be silently overwritten by the fallback path.
 | Code | Meaning |
 |---|---|
 | `0` | Applied (or already applied) and all gates pass |
-| `1` | Gate failed — the work is wrong |
+| `1` | Gate failed — the work is wrong, or gate predicate raised an exception |
 | `3` | Drift — halt and replan |
 | `4` | Manual task awaiting a human or agent edit |
+
+Exit 1 covers both a gate that explicitly failed (via `GateFailure`) and a gate
+predicate that raised an uncaught exception. These are distinguished by inspecting
+the report's `stderr` field: a crashed predicate will include a Python traceback
+there, while a clean gate failure will not. This is inherent to the design and
+diagnosable from the report; no special handling is needed.
 
 ## CLI facts (hashline 0.9.1)
 

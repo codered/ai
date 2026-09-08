@@ -207,6 +207,35 @@ class Editor:
     def swap(self, anchor, lines):
         self._ops.append(Op("swap", anchor, anchor, list(lines)))
 
+    def _verify_multiline_ops(self):
+        """For any op spanning multiple lines, verify all interior lines haven't drifted.
+
+        hashline's SWAP verb only verifies the first and last line hashes, so we must
+        do a fresh read and check every line the op spans against the snapshot.
+        Single-line ops skip this check since the endpoint hash is sufficient.
+        """
+        # Check if any op spans more than one line
+        has_multiline = any(op.first.n != op.last.n for op in self._ops)
+        if not has_multiline:
+            return
+
+        # Take a fresh read from hashline
+        current = _hl(["read", "--json", self.path])
+        current_lines = {l["n"]: l["content"] for l in current["lines"]}
+
+        # Verify all lines spanned by each op
+        for op in self._ops:
+            for line_num in range(op.first.n, op.last.n + 1):
+                if line_num - 1 >= len(self._lines):
+                    raise Drift("%s:%d is beyond snapshot" % (self.path, line_num))
+                captured_content = self._lines[line_num - 1].content
+                current_content = current_lines.get(line_num)
+                if current_content != captured_content:
+                    raise Drift(
+                        "%s:%d changed since read (expected %r, got %r)"
+                        % (self.path, line_num, captured_content, current_content)
+                    )
+
     def commit(self):
         self._committed = True
         if not self._ops:
@@ -215,6 +244,8 @@ class Editor:
             self._apply_fallback()
             self._ops = []
             return
+        # Before patching, verify all lines spanned by multi-line ops
+        self._verify_multiline_ops()
         patch = self._render_patch()
         try:
             _hl(["patch", "--json", "--dry-run", self.path, patch])
@@ -259,12 +290,15 @@ class Editor:
         lines = text.splitlines()
         trailing_nl = text.endswith("\n")
         for op in self._ops:
-            for anchor in {op.first, op.last}:
-                idx = anchor.n - 1
-                if idx >= len(lines) or lines[idx] != anchor.content:
+            # Verify all lines spanned by this op, not just endpoints
+            for line_num in range(op.first.n, op.last.n + 1):
+                idx = line_num - 1
+                # Get the captured content from the snapshot
+                captured_anchor = self._lines[idx]
+                if idx >= len(lines) or lines[idx] != captured_anchor.content:
                     raise Drift(
                         "%s:%d changed since read (expected %r, got %r)"
-                        % (self.path, anchor.n, anchor.content,
+                        % (self.path, line_num, captured_anchor.content,
                            lines[idx] if idx < len(lines) else "<EOF>")
                     )
         for op in sorted(self._ops, key=lambda o: o.first.n, reverse=True):

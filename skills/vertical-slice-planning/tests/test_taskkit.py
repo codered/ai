@@ -214,6 +214,94 @@ class TestOps(ScratchRepo):
             self.assertIn("grown", str(cm.exception).lower())
 
 
+class TestMultilineInteriorDrift(ScratchRepo):
+    def test_hashline_detects_interior_line_drift_in_multiline_swap(self):
+        """Real backend: multi-line SWAP detects interior line drift.
+
+        When swapping a multi-line range, all interior lines must be verified
+        against the snapshot at commit time, not just the endpoints.
+        """
+        multiline_content = """def send(req):
+    line1 = get_data()
+    line2 = process(line1)
+    line3 = validate(line2)
+    return _post(req)
+
+def ping():
+    return "ok"
+"""
+        self.write("client.py", multiline_content)
+
+        with Editor("client.py") as ed:
+            first = ed.locate("def send(req):")
+            last = ed.locate("    return _post(req)")
+
+            # Before commit, externally modify an interior line
+            modified = multiline_content.replace(
+                "    line2 = process(line1)",
+                "    line2 = process(line1) # MODIFIED"
+            )
+            self.write("client.py", modified)
+
+            ed.swap_range(first, last, [
+                "def send(req, timeout=5):",
+                "    return _post(req, retries=3)"
+            ])
+
+            # Should raise Drift because interior line changed
+            with self.assertRaises(taskkit.Drift):
+                ed.commit()
+
+        # Verify concurrent writer's content is preserved
+        self.assertIn("MODIFIED", self.read("client.py"))
+        self.assertNotIn("retries=3", self.read("client.py"))
+
+    def test_fallback_detects_interior_line_drift_in_multiline_swap(self):
+        """Fallback backend: multi-line SWAP detects interior line drift.
+
+        When swapping a multi-line range in fallback mode, all interior lines
+        must be verified against the snapshot, not just endpoints.
+        """
+        import taskkit
+        self.addCleanup(setattr, taskkit, "HASHLINE_BIN", taskkit.HASHLINE_BIN)
+        taskkit.HASHLINE_BIN = "/nonexistent/hashline"
+
+        multiline_content = """def send(req):
+    line1 = get_data()
+    line2 = process(line1)
+    line3 = validate(line2)
+    return _post(req)
+
+def ping():
+    return "ok"
+"""
+        self.write("client.py", multiline_content)
+
+        with Editor("client.py") as ed:
+            first = ed.locate("def send(req):")
+            last = ed.locate("    return _post(req)")
+
+            # Before commit, externally modify an interior line
+            modified = multiline_content.replace(
+                "    line2 = process(line1)",
+                "    line2 = process(line1) # MODIFIED"
+            )
+            self.write("client.py", modified)
+
+            ed.swap_range(first, last, [
+                "def send(req, timeout=5):",
+                "    return _post(req, retries=3)"
+            ])
+
+            # Should raise Drift in fallback path too
+            with self.assertRaises(taskkit.Drift):
+                ed.commit()
+
+        # Verify concurrent writer's content is preserved
+        self.assertIn("MODIFIED", self.read("client.py"))
+        self.assertNotIn("retries=3", self.read("client.py"))
+
+
 class TestTiers(ScratchRepo):
     def test_component_gate_passes_on_zero_exit(self):
         gate.component("unit tests", [sys.executable, "-c", "print('ok')"])
