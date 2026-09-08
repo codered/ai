@@ -49,5 +49,35 @@ class TestThinSlice(ScratchRepo):
         self.assertEqual(gate.run(apply, verify), 1)
 
 
+class TestDrift(ScratchRepo):
+    def test_missing_expected_line_is_drift_not_guesswork(self):
+        with self.assertRaises(taskkit.Drift):
+            with Editor("client.py") as ed:
+                ed.swap(ed.locate("    return _post(req)  # gone"), ["x"])
+
+    def test_drift_exits_3_and_writes_nothing(self):
+        before = self.read("client.py")
+
+        def apply():
+            with Editor("client.py") as ed:
+                ed.swap(ed.locate("    line that never existed"), ["x"])
+
+        def verify():
+            gate.structural("impossible", lambda: False)
+
+        self.assertEqual(gate.run(apply, verify), 3)
+        self.assertEqual(self.read("client.py"), before)
+
+    def test_stale_hash_from_a_concurrent_write_is_drift(self):
+        with Editor("client.py") as ed:
+            anchor = ed.locate("    return _post(req)")
+            # Someone else edits the file after our read.
+            self.write("client.py", "def send(req):\n    return _post(req, retries=9)\n")
+            ed.swap(anchor, ["    return _post(req, retries=3)"])
+            with self.assertRaises(taskkit.Drift):
+                ed.commit()
+        self.assertIn("retries=9", self.read("client.py"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -56,8 +56,14 @@ def _hl(args):
         proc = subprocess.run([HASHLINE_BIN] + args, capture_output=True, text=True)
     except OSError as exc:
         raise BackendUnavailable(str(exc))
+
+    # Try stdout first, then stderr if stdout is empty (hashline puts errors in stderr with --json)
+    json_text = proc.stdout.strip()
+    if not json_text and proc.stderr.strip():
+        json_text = proc.stderr.strip()
+
     try:
-        data = json.loads(proc.stdout.strip())
+        data = json.loads(json_text)
     except json.JSONDecodeError:
         raise BackendUnavailable(
             "non-JSON output from hashline: %r / %r" % (proc.stdout[:200], proc.stderr[:200])
