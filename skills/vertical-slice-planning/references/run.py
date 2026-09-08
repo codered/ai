@@ -32,10 +32,15 @@ def discover(plan_dir):
     return sorted(paths, key=key)
 
 
-def run_task(path, verify_only=False):
-    """Run one task script. Returns (exit_code, report_dict)."""
+def run_task(path, verify_only=False, repo_root=None):
+    """Run one task script. Returns (exit_code, report_dict).
+
+    Tasks always run with cwd = the target repo root, never the plan directory.
+    """
+    if repo_root is None:
+        repo_root = os.getcwd()
     cmd = [sys.executable, path] + (["--verify-only"] if verify_only else [])
-    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_root)
     report = {}
     for line in reversed(proc.stdout.splitlines()):
         try:
@@ -54,6 +59,15 @@ def main(argv):
     status_only = "--status" in argv
     if status_only:
         argv.remove("--status")
+
+    repo_root = os.getcwd()
+    if "--repo-root" in argv:
+        idx = argv.index("--repo-root")
+        if idx + 1 < len(argv):
+            repo_root = argv[idx + 1]
+            argv.pop(idx + 1)
+            argv.pop(idx)
+
     plan_dir = argv[0] if argv else os.path.dirname(os.path.abspath(__file__))
 
     tasks = discover(plan_dir)
@@ -64,7 +78,7 @@ def main(argv):
     results = []
     for path in tasks:
         name = os.path.basename(path)
-        code, report = run_task(path, verify_only=status_only)
+        code, report = run_task(path, verify_only=status_only, repo_root=repo_root)
         results.append((name, code, report))
         label = EXIT_MEANING.get(code, "EXIT %d" % code)
         print("%-40s %s" % (name, label))
