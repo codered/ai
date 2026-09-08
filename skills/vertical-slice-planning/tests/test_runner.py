@@ -280,8 +280,19 @@ class TestStatusSync(PlanFixture):
     def test_sync_returns_count_of_changed_lines(self):
         self._plan([("task_01_a", TASK)])
         self.write("plan_superpowers.md", PLAN_MD)
+        # task_01_a.py (code 0) flips - [ ] → - [x]; task_02_bad.py (code 1) flips - [x] → - [ ]
         changed = runner.sync_checkboxes(self.dir, [("task_01_a.py", 0, {}), ("task_02_bad.py", 1, {})])
+        self.assertEqual(changed, 2)
+
+    def test_sync_updates_checkboxes_for_results_without_files(self):
+        """A result without a file in tasks/ still syncs its checkbox."""
+        self._plan([])  # No files created
+        self.write("plan_superpowers.md", PLAN_MD)
+        # task_02_bad.py (code 1) should flip - [x] → - [ ] even though file doesn't exist
+        changed = runner.sync_checkboxes(self.dir, [("task_02_bad.py", 1, {})])
         self.assertEqual(changed, 1)
+        text = self.read("plan_superpowers.md")
+        self.assertIn("- [ ] **Task 02", text)
 
 
 if __name__ == "__main__":

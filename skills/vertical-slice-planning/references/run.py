@@ -59,18 +59,13 @@ def run_task(path, verify_only=False, repo_root=None):
 def sync_checkboxes(plan_dir, results):
     """Rewrite plan_superpowers.md checkboxes from measured gate results.
 
-    A line is touched only when its marker names a task we actually ran, so
+    A line is touched only when its marker names a task in results, so
     hand-written checkboxes for anything else are left alone.
     """
     path = os.path.join(plan_dir, "plan_superpowers.md")
     if not os.path.exists(path):
         return 0
-    # Only sync tasks that exist as files in the plan directory
-    existing_tasks = set()
-    tasks_dir = os.path.join(plan_dir, "tasks")
-    if os.path.exists(tasks_dir):
-        existing_tasks = set(os.path.basename(p) for p in glob.glob(os.path.join(tasks_dir, "task_*.py")))
-    state = {name: code == 0 for name, code, _ in results if name in existing_tasks}
+    state = {name: code == 0 for name, code, _ in results}
     changed = 0
     with open(path, encoding="utf-8") as fh:
         lines = fh.read().splitlines()
