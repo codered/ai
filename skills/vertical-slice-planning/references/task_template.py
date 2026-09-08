@@ -1,8 +1,9 @@
-"""Canonical task shapes. Copy one of these per task; delete the other."""
+"""Canonical task shapes. Copy one of these per task; delete the other block entirely, including its guard."""
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Resolve taskkit in the plan root (one level above tasks/)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import taskkit
 from taskkit import Editor, ManualTask, gate
@@ -54,3 +55,6 @@ if __name__ == "__main__":
 # def verify():
 #     gate.structural("RetryPolicy in use", lambda: taskkit.file_contains("svc/orders/service.py", "RetryPolicy"))
 #     gate.component("orders unit tests", [sys.executable, "-m", "unittest", "discover", "-s", "svc/orders/tests"])
+#
+# if __name__ == "__main__":
+#     raise SystemExit(gate.run(apply, verify))

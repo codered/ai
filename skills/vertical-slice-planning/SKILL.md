@@ -75,9 +75,10 @@ say so now rather than emitting a task that cannot prove itself.
 them. Copy `references/taskkit.py` and `references/run.py` in verbatim — do not
 regenerate or edit them. Start each task from `references/task_template.py`.
 
-**6. Self-check before handing over.** Run `python3 run.py --status` from the
-target repo root. Tasks always run with `cwd = the target repo root`, never the
-plan directory. If you're running from elsewhere, use `python3 docs/plans/<dir>/run.py --status --repo-root /path/to/repo`.
+**6. Self-check before handing over.** From the target repo root, run
+`python3 docs/plans/<dir>/run.py --status`. Tasks always run with `cwd = the target repo root`,
+never the plan directory. If you're running from elsewhere, use
+`python3 docs/plans/<dir>/run.py --status --repo-root /path/to/repo` to override the target directory.
 Every gate must **fail cleanly** (exit 1) rather than error. A gate that errors
 is a defect in the plan — fix it before handing over.
 

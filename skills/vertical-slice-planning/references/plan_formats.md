@@ -50,22 +50,30 @@ or whose marker names a script the runner did not run, are never touched.
 
 ## Running the plan
 
-From the plan directory itself:
+Tasks always run with `cwd = the target repo root`, never the plan directory.
+This ensures that task scripts can use relative paths consistently, and that
+edits land in the right place regardless of where the runner invoked `run.py`.
+
+From the target repo root:
 
 ```bash
-python3 run.py              # run tasks in order, stop at the first non-zero
-python3 run.py --status     # probe every gate, report state, change nothing
+python3 docs/plans/YYYY-MM-DD-<feature>/run.py              # run tasks in order, stop at the first non-zero
+python3 docs/plans/YYYY-MM-DD-<feature>/run.py --status     # probe every gate, report state, change nothing
 ```
 
-From elsewhere (passing `--repo-root` to override the target repo):
+From elsewhere (passing `--repo-root` to override the target directory):
 
 ```bash
 python3 docs/plans/YYYY-MM-DD-<feature>/run.py --repo-root /path/to/repo
 python3 docs/plans/YYYY-MM-DD-<feature>/run.py --status --repo-root /path/to/repo
 ```
 
-Tasks always run with `cwd = the target repo root`, never the plan directory.
-This ensures that task scripts can use relative paths consistently, and that
-edits land in the right place regardless of where the runner invoked `run.py`.
-The `--repo-root` option allows running the plan from anywhere; without it,
-the current working directory is assumed to be the repo root.
+### Programmatic invocation
+
+```python
+from run import run_task
+
+# Run one task script. Returns (exit_code, report_dict).
+# repo_root defaults to the current working directory if None.
+exit_code, report = run_task(path, verify_only=False, repo_root=None)
+```
