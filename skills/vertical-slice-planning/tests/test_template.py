@@ -8,10 +8,10 @@ import subprocess
 import unittest
 import re
 
-# Add parent to path for importing run
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from helpers import REFS
 
-from run import run_task
+sys.path.insert(0, REFS)
+from run import run_task  # noqa: E402
 
 
 class TestRealTemplate(unittest.TestCase):
