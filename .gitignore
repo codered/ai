@@ -4,3 +4,17 @@ node_modules/
 # Python
 __pycache__/
 *.py[cod]
+
+# Locally installed third-party skills (from skills-lock.json)
+/.pi/
+
+# Memory-skill store for this clone (local working state)
+/memory/
+
+# teach-me lesson output
+/lessons/
+
+# Local tooling manifests, not part of the published skills repo
+/skills-lock.json
+/package.json
+/package-lock.json
