@@ -307,6 +307,33 @@ class gate:
         _record("T0", desc, ok, time.time() - start)
 
     @staticmethod
+    def _cmd(tier, desc, cmd, cwd=None):
+        start = time.time()
+        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+        detail = ((proc.stdout or "") + (proc.stderr or "")).strip()[-2000:]
+        _record(tier, desc, proc.returncode == 0, time.time() - start, detail)
+
+    @staticmethod
+    def component(desc, cmd, cwd=None):
+        """T1 — the touched component's own tests."""
+        gate._cmd("T1", desc, cmd, cwd)
+
+    @staticmethod
+    def crossing(desc, cmd=None, check=None, cwd=None):
+        """T2 — a real end-to-end call through the seam this task wired.
+
+        Mandatory whenever a task touches two or more components.
+        """
+        if cmd is not None:
+            gate._cmd("T2", desc, cmd, cwd)
+            return
+        if check is None:
+            raise ValueError("crossing() needs cmd= or check=")
+        start = time.time()
+        ok = bool(check())
+        _record("T2", desc, ok, time.time() - start)
+
+    @staticmethod
     def run(apply, verify):
         """Idempotent driver. Probes verify() first, so a re-run is a no-op."""
         verify_only = "--verify-only" in sys.argv
@@ -337,7 +364,8 @@ def _probe(verify):
     saved = list(REPORT["tiers"])
     try:
         verify()
-        return True
+        ok = True
     except _PROBE_EXC:
-        REPORT["tiers"] = saved
-        return False
+        ok = False
+    REPORT["tiers"] = saved  # Always restore, since this is just a probe
+    return ok

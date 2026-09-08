@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from helpers import ScratchRepo
@@ -209,6 +210,41 @@ class TestOps(ScratchRepo):
             with self.assertRaises(taskkit.Drift) as cm:
                 ed.locate_block("def ping():")
             self.assertIn("grown", str(cm.exception).lower())
+
+
+class TestTiers(ScratchRepo):
+    def test_component_gate_passes_on_zero_exit(self):
+        gate.component("unit tests", [sys.executable, "-c", "print('ok')"])
+        entry = taskkit.REPORT["tiers"][-1]
+        self.assertEqual(entry["tier"], "T1")
+        self.assertTrue(entry["ok"])
+        self.assertGreaterEqual(entry["seconds"], 0.0)
+
+    def test_component_gate_fails_on_nonzero_exit(self):
+        with self.assertRaises(taskkit.GateFailure):
+            gate.component("unit tests", [sys.executable, "-c", "raise SystemExit(1)"])
+        self.assertFalse(taskkit.REPORT["tiers"][-1]["ok"])
+
+    def test_crossing_gate_accepts_a_callable(self):
+        gate.crossing("client reaches orders", check=lambda: True)
+        self.assertEqual(taskkit.REPORT["tiers"][-1]["tier"], "T2")
+
+    def test_crossing_failure_detail_carries_output(self):
+        with self.assertRaises(taskkit.GateFailure):
+            gate.crossing("seam", cmd=[sys.executable, "-c", "import sys; sys.stderr.write('boom'); raise SystemExit(2)"])
+        self.assertIn("boom", taskkit.REPORT["tiers"][-1]["detail"])
+
+    def test_all_three_tiers_recorded_in_order(self):
+        def apply():
+            pass
+
+        def verify():
+            gate.structural("file present", lambda: True)
+            gate.component("unit", [sys.executable, "-c", "pass"])
+            gate.crossing("seam", check=lambda: True)
+
+        self.assertEqual(gate.run(apply, verify), 0)
+        self.assertEqual([t["tier"] for t in taskkit.REPORT["tiers"]], ["T0", "T1", "T2"])
 
 
 if __name__ == "__main__":
