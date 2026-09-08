@@ -247,5 +247,36 @@ class TestTiers(ScratchRepo):
         self.assertEqual([t["tier"] for t in taskkit.REPORT["tiers"]], ["T0", "T1", "T2"])
 
 
+class TestManual(ScratchRepo):
+    def _task(self):
+        def apply():
+            raise taskkit.ManualTask(
+                "Rewrite send() to take a RetryPolicy object; see plan_superpowers.md Task 07."
+            )
+
+        def verify():
+            gate.structural("RetryPolicy threaded", lambda: taskkit.file_contains("client.py", "RetryPolicy"))
+
+        return apply, verify
+
+    def test_manual_task_exits_4_when_not_done(self):
+        apply, verify = self._task()
+        self.assertEqual(gate.run(apply, verify), 4)
+
+    def test_manual_task_exits_0_once_the_edit_exists(self):
+        self.write("client.py", "def send(req, policy: RetryPolicy):\n    return _post(req)\n")
+        apply, verify = self._task()
+        self.assertEqual(gate.run(apply, verify), 0)
+
+    def test_manual_instructions_are_printed(self):
+        apply, verify = self._task()
+        import contextlib
+        import io
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            gate.run(apply, verify)
+        self.assertIn("RetryPolicy object", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
