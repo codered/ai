@@ -186,6 +186,30 @@ class TestOps(ScratchRepo):
         with self.assertRaises(taskkit.Drift):
             taskkit.create_file("svc/orders.py", "b\n")
 
+    def test_locate_block_mid_file(self):
+        with Editor("client.py") as ed:
+            first, last = ed.locate_block("def send(req):")
+            # send() is lines 1-2, but hashline's block includes separator blank lines
+            # Verify the block range and that replacement works correctly
+            ed.swap_range(first, last, ["def send(req, timeout=5):", "    return _post(req, retries=3)"])
+        text = self.read("client.py")
+        self.assertIn("def send(req, timeout=5):", text)
+        self.assertIn("retries=3", text)
+        # Verify ping function is still there (wasn't in the mid-file block)
+        self.assertIn("def ping():", text)
+
+    def test_locate_block_concurrent_growth(self):
+        with Editor("client.py") as ed:
+            # Open editor, capturing snapshot of file (6 lines)
+            # External writer appends indented content that extends the ping() block
+            current = self.read("client.py")
+            self.write("client.py", current + "    # extra body line\n")
+            # locate_block on ping() should now detect that find-block returns
+            # a line beyond our snapshot with non-empty content (the new body line)
+            with self.assertRaises(taskkit.Drift) as cm:
+                ed.locate_block("def ping():")
+            self.assertIn("grown", str(cm.exception).lower())
+
 
 if __name__ == "__main__":
     unittest.main()

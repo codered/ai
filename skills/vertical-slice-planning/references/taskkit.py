@@ -163,14 +163,17 @@ class Editor:
         if REPORT["backend"] == "hashline":
             try:
                 data = _hl(["find-block", "--json", self.path, "%d:%s" % (head.n, head.hash)])
-                numbers = [b["n"] for b in data["block_lines"]]
-                first_num = min(numbers)
-                last_num = max(numbers)
-                # Clamp to valid line range (hashline may return line count+1 for trailing)
-                last_num = min(last_num, len(self._lines))
-                if last_num < first_num:
-                    raise BackendUnavailable("find-block returned invalid line range")
-                return self._lines[first_num - 1], self._lines[last_num - 1]
+                block_lines = data["block_lines"]
+                # Drop only phantom padding: entries beyond snapshot that are empty
+                filtered = [b for b in block_lines if b["n"] <= len(self._lines) or b.get("content", "").strip()]
+                if not filtered:
+                    raise BackendUnavailable("find-block returned only phantom padding")
+                # Check for file growth: non-empty content beyond our snapshot
+                for b in filtered:
+                    if b["n"] > len(self._lines):
+                        raise Drift("%s has grown since read: line %d exists in find-block" % (self.path, b["n"]))
+                numbers = [b["n"] for b in filtered]
+                return self._lines[min(numbers) - 1], self._lines[max(numbers) - 1]
             except BackendUnavailable as exc:
                 _warn("fallback backend used: %s" % exc)
                 REPORT["backend"] = "fallback"
