@@ -1,7 +1,9 @@
+import os
 import sys
 import unittest
 
-from helpers import ScratchRepo
+sys.path.insert(0, os.path.dirname(__file__))
+from helpers import ScratchRepo  # noqa: E402
 
 import taskkit
 from taskkit import Editor, gate

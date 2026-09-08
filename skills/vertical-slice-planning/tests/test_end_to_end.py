@@ -4,12 +4,19 @@ import os
 import sys
 import unittest
 
-from helpers import REFS, ScratchRepo
+sys.path.insert(0, os.path.dirname(__file__))
+from helpers import REFS, ScratchRepo  # noqa: E402
 
 sys.path.insert(0, REFS)
 import run as runner  # noqa: E402
 
-CLIENT = 'def send(payload):\n    return _post("/orders", payload)\n'
+CLIENT = '''\
+def _post(path, payload, headers=None):
+    return {"path": path, "payload": payload, "headers": headers or {}}
+
+def send(payload):
+    return _post("/orders", payload)
+'''
 SERVICE = 'def handle(req):\n    return {"ok": True}\n'
 
 SMOKE = '''\
@@ -17,8 +24,10 @@ import sys
 sys.path.insert(0, ".")
 from client import send
 from service import handle
-req = {"headers": {"x-retries": "2"}}
-assert handle(req)["retries"] == 2, handle(req)
+resp = send({"id": 1})
+assert resp["headers"].get("x-retries") == "2", resp["headers"]
+result = handle(resp)
+assert result["retries"] == 2, result
 print("seam ok")
 '''
 
@@ -45,7 +54,7 @@ def apply():
 def verify():
     gate.structural("service reads the header", lambda: taskkit.file_contains("service.py", "x-retries"))
     gate.structural("client sends the header", lambda: taskkit.file_contains("client.py", "x-retries"))
-    gate.crossing("client header reaches service", cmd=[sys.executable, "smoke.py"])
+    gate.crossing("client to service seam", cmd=[sys.executable, "smoke.py"])
 
 
 if __name__ == "__main__":

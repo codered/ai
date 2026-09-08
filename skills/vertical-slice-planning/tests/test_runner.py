@@ -3,7 +3,8 @@ import subprocess
 import sys
 import unittest
 
-from helpers import REFS, ScratchRepo
+sys.path.insert(0, os.path.dirname(__file__))
+from helpers import REFS, ScratchRepo  # noqa: E402
 
 sys.path.insert(0, REFS)
 import run as runner  # noqa: E402

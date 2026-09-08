@@ -8,7 +8,8 @@ import subprocess
 import unittest
 import re
 
-from helpers import REFS
+sys.path.insert(0, os.path.dirname(__file__))
+from helpers import REFS  # noqa: E402
 
 sys.path.insert(0, REFS)
 from run import run_task  # noqa: E402
