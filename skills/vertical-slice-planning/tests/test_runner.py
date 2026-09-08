@@ -90,8 +90,16 @@ if __name__ == "__main__":
     raise SystemExit(gate.run(apply, verify))
 '''
 
+PLAN_MD = """\
+# Demo Implementation Plan
 
-class TestRunner(ScratchRepo):
+- [ ] **Task 01 — write the log line** <!-- task_01_a.py -->
+- [x] **Task 02 — stale tick that must be cleared** <!-- task_02_bad.py -->
+- [ ] **Task 99 — no such script** <!-- task_99_ghost.py -->
+"""
+
+
+class PlanFixture(ScratchRepo):
     def _plan(self, specs):
         os.makedirs("tasks", exist_ok=True)
         out = os.path.join(self.dir, "order.log")
@@ -99,6 +107,9 @@ class TestRunner(ScratchRepo):
             body = template.format(refs=REFS, out=out, name=name)
             self.write(os.path.join("tasks", name + ".py"), body)
         return out
+
+
+class TestRunner(PlanFixture):
 
     def test_tasks_run_in_order(self):
         out = self._plan([("task_01_a", TASK), ("task_02_b", TASK), ("task_10_c", TASK)])
@@ -242,6 +253,35 @@ if __name__ == "__main__":
             self.assertFalse(os.path.exists(bad_path), "File should NOT exist in plan directory")
         finally:
             os.chdir(cwd_backup)
+
+
+class TestStatusSync(PlanFixture):
+    def test_status_ticks_passing_and_clears_failing(self):
+        out = self._plan([("task_01_a", TASK), ("task_02_bad", FAILING)])
+        self.write("plan_superpowers.md", PLAN_MD)
+        # Do the work task 01 checks for, without running its apply().
+        with open(out, "a", encoding="utf-8") as fh:
+            fh.write("task_01_a\n")
+
+        code = runner.main(["--status", self.dir])
+        self.assertEqual(code, 0, "--status never fails the run")
+
+        text = self.read("plan_superpowers.md")
+        self.assertIn("- [x] **Task 01", text)
+        self.assertIn("- [ ] **Task 02", text)
+        self.assertIn("- [ ] **Task 99", text, "unknown scripts are left alone")
+
+    def test_status_changes_no_files(self):
+        self._plan([("task_01_a", TASK)])
+        before = self.read("tasks/task_01_a.py")
+        runner.main(["--status", self.dir])
+        self.assertEqual(self.read("tasks/task_01_a.py"), before)
+
+    def test_sync_returns_count_of_changed_lines(self):
+        self._plan([("task_01_a", TASK)])
+        self.write("plan_superpowers.md", PLAN_MD)
+        changed = runner.sync_checkboxes(self.dir, [("task_01_a.py", 0, {}), ("task_02_bad.py", 1, {})])
+        self.assertEqual(changed, 1)
 
 
 if __name__ == "__main__":

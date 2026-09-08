@@ -20,6 +20,8 @@ EXIT_MEANING = {
     4: "MANUAL — awaiting edit",
 }
 
+CHECKBOX = re.compile(r"^(\s*- \[)([ x])(\]\s.*<!--\s*(task_[\w.]+\.py)\s*-->\s*)$")
+
 
 def discover(plan_dir):
     """Task scripts in execution order, sorted by their numeric prefix."""
@@ -52,6 +54,41 @@ def run_task(path, verify_only=False, repo_root=None):
             break
     report.setdefault("stderr", proc.stderr.strip()[-2000:])
     return proc.returncode, report
+
+
+def sync_checkboxes(plan_dir, results):
+    """Rewrite plan_superpowers.md checkboxes from measured gate results.
+
+    A line is touched only when its marker names a task we actually ran, so
+    hand-written checkboxes for anything else are left alone.
+    """
+    path = os.path.join(plan_dir, "plan_superpowers.md")
+    if not os.path.exists(path):
+        return 0
+    # Only sync tasks that exist as files in the plan directory
+    existing_tasks = set()
+    tasks_dir = os.path.join(plan_dir, "tasks")
+    if os.path.exists(tasks_dir):
+        existing_tasks = set(os.path.basename(p) for p in glob.glob(os.path.join(tasks_dir, "task_*.py")))
+    state = {name: code == 0 for name, code, _ in results if name in existing_tasks}
+    changed = 0
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().splitlines()
+    for i, line in enumerate(lines):
+        match = CHECKBOX.match(line)
+        if not match:
+            continue
+        head, mark, tail, name = match.groups()
+        if name not in state:
+            continue
+        want = "x" if state[name] else " "
+        if want != mark:
+            lines[i] = head + want + tail
+            changed += 1
+    if changed:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+    return changed
 
 
 def main(argv):
@@ -89,6 +126,10 @@ def main(argv):
             if not status_only:
                 print("stopping: %s exited %d" % (name, code), file=sys.stderr)
                 return code
+    if status_only:
+        changed = sync_checkboxes(plan_dir, results)
+        passing = sum(1 for _, code, _ in results if code == 0)
+        print("%d/%d gates green (%d checkbox lines updated)" % (passing, len(results), changed))
     return 0
 
 
