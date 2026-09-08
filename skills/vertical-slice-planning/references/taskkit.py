@@ -94,6 +94,7 @@ class Editor:
         self._ops = []
         self._lines = []
         self._committed = False
+        self._trailing_nl = True
 
     def __enter__(self):
         self._lines = self._read()
@@ -105,8 +106,19 @@ class Editor:
         return False
 
     def _read(self):
-        data = _hl(["read", "--json", self.path])
-        return [Anchor(l["n"], l["hash"], l["content"]) for l in data["lines"]]
+        try:
+            data = _hl(["read", "--json", self.path])
+            return [Anchor(l["n"], l["hash"], l["content"]) for l in data["lines"]]
+        except BackendUnavailable as exc:
+            _warn("fallback backend used: %s" % exc)
+            REPORT["backend"] = "fallback"
+            return self._fallback_read()
+
+    def _fallback_read(self):
+        with open(self.path, encoding="utf-8") as fh:
+            text = fh.read()
+        self._trailing_nl = text.endswith("\n")
+        return [Anchor(i + 1, None, c) for i, c in enumerate(text.splitlines())]
 
     def locate(self, expected, occurrence=1):
         """Return the anchor of the line whose content is exactly `expected`.
@@ -126,9 +138,20 @@ class Editor:
         self._committed = True
         if not self._ops:
             return
+        if REPORT["backend"] == "fallback":
+            self._apply_fallback()
+            self._ops = []
+            return
         patch = self._render_patch()
-        _hl(["patch", "--json", "--dry-run", self.path, patch])
-        _hl(["patch", "--json", self.path, patch])
+        try:
+            _hl(["patch", "--json", "--dry-run", self.path, patch])
+            _hl(["patch", "--json", self.path, patch])
+        except BackendUnavailable as exc:
+            # Tool failure degrades. Drift, raised above as Drift, does not.
+            _warn("fallback backend used: %s" % exc)
+            REPORT["backend"] = "fallback"
+            self._lines = self._fallback_read()
+            self._apply_fallback()
         self._ops = []
 
     def _render_patch(self):
@@ -146,6 +169,39 @@ class Editor:
                 raise NotImplementedError(op.kind)
         out.append("*** End Patch")
         return "\n".join(out)
+
+    def _apply_fallback(self):
+        """Re-verify every op's captured content, then splice bottom-up."""
+        with open(self.path, encoding="utf-8") as fh:
+            text = fh.read()
+        lines = text.splitlines()
+        trailing_nl = text.endswith("\n")
+        for op in self._ops:
+            for anchor in {op.first, op.last}:
+                idx = anchor.n - 1
+                if idx >= len(lines) or lines[idx] != anchor.content:
+                    raise Drift(
+                        "%s:%d changed since read (expected %r, got %r)"
+                        % (self.path, anchor.n, anchor.content,
+                           lines[idx] if idx < len(lines) else "<EOF>")
+                    )
+        for op in sorted(self._ops, key=lambda o: o.first.n, reverse=True):
+            start, end = op.first.n - 1, op.last.n
+            if op.kind == "swap":
+                lines[start:end] = list(op.lines)
+            elif op.kind == "delete":
+                del lines[start:end]
+            elif op.kind == "insert_before":
+                lines[start:start] = list(op.lines)
+            elif op.kind == "insert_after":
+                lines[end:end] = list(op.lines)
+            else:
+                raise NotImplementedError(op.kind)
+        out = "\n".join(lines) + ("\n" if trailing_nl else "")
+        tmp = self.path + ".taskkit.tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write(out)
+        os.replace(tmp, self.path)
 
 
 def _record(tier, desc, ok, seconds, detail=""):

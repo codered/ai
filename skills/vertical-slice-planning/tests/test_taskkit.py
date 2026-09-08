@@ -96,5 +96,47 @@ class TestDrift(ScratchRepo):
         self.assertEqual(self.read("client.py"), concurrent_content)
 
 
+class TestFallback(ScratchRepo):
+    def _break_hashline(self):
+        import taskkit
+        self.addCleanup(setattr, taskkit, "HASHLINE_BIN", taskkit.HASHLINE_BIN)
+        taskkit.HASHLINE_BIN = "/nonexistent/hashline"
+
+    def test_edit_still_lands_when_hashline_is_missing(self):
+        self._break_hashline()
+        with Editor("client.py") as ed:
+            ed.swap(ed.locate("    return _post(req)"), ["    return _post(req, retries=3)"])
+        self.assertIn("retries=3", self.read("client.py"))
+
+    def test_fallback_is_recorded_and_warned(self):
+        self._break_hashline()
+        with Editor("client.py") as ed:
+            ed.swap(ed.locate("    return _post(req)"), ["    return _post(req, retries=3)"])
+        self.assertEqual(taskkit.REPORT["backend"], "fallback")
+        self.assertTrue(
+            any("fallback backend used" in w for w in taskkit.REPORT["warnings"]),
+            taskkit.REPORT["warnings"],
+        )
+
+    def test_fallback_still_refuses_drifted_content(self):
+        self._break_hashline()
+        with Editor("client.py") as ed:
+            anchor = ed.locate("    return _post(req)")
+            self.write("client.py", "def send(req):\n    return _post(req, retries=9)\n")
+            ed.swap(anchor, ["    return _post(req, retries=3)"])
+            with self.assertRaises(taskkit.Drift):
+                ed.commit()
+        self.assertIn("retries=9", self.read("client.py"))
+
+    def test_fallback_preserves_the_rest_of_the_file(self):
+        self._break_hashline()
+        with Editor("client.py") as ed:
+            ed.swap(ed.locate('    return "ok"'), ['    return "pong"'])
+        text = self.read("client.py")
+        self.assertIn("def send(req):", text)
+        self.assertIn('return "pong"', text)
+        self.assertTrue(text.endswith("\n"))
+
+
 if __name__ == "__main__":
     unittest.main()
