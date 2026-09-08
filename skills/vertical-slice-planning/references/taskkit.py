@@ -86,6 +86,26 @@ def file_contains(path, text):
         return text in fh.read()
 
 
+def create_file(path, content):
+    """Create a new file. Idempotent; conflicting existing content is Drift."""
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            existing = fh.read()
+        if existing == content:
+            return
+        raise Drift("%s already exists with different content" % path)
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    try:
+        _hl(["write", "--json", path, content])
+    except BackendUnavailable as exc:
+        _warn("fallback backend used: %s" % exc)
+        REPORT["backend"] = "fallback"
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+
+
 class Editor:
     """Anchored editor over one file. Buffers ops, emits one patch on exit."""
 
@@ -131,6 +151,56 @@ class Editor:
             raise Drift("%s: expected line not found: %r" % (self.path, expected))
         return hits[occurrence - 1]
 
+    def locate_contains(self, needle, occurrence=1):
+        hits = [a for a in self._lines if needle in a.content]
+        if len(hits) < occurrence:
+            raise Drift("%s: no line containing %r" % (self.path, needle))
+        return hits[occurrence - 1]
+
+    def locate_block(self, head_expected):
+        """Return (first, last) anchors of the syntactic block headed by this line."""
+        head = self.locate(head_expected)
+        if REPORT["backend"] == "hashline":
+            try:
+                data = _hl(["find-block", "--json", self.path, "%d:%s" % (head.n, head.hash)])
+                numbers = [b["n"] for b in data["block_lines"]]
+                first_num = min(numbers)
+                last_num = max(numbers)
+                # Clamp to valid line range (hashline may return line count+1 for trailing)
+                last_num = min(last_num, len(self._lines))
+                if last_num < first_num:
+                    raise BackendUnavailable("find-block returned invalid line range")
+                return self._lines[first_num - 1], self._lines[last_num - 1]
+            except BackendUnavailable as exc:
+                _warn("fallback backend used: %s" % exc)
+                REPORT["backend"] = "fallback"
+        return self._fallback_block(head)
+
+    def _fallback_block(self, head):
+        """Indentation-scan block detection: head line plus its more-indented body."""
+        base = len(head.content) - len(head.content.lstrip())
+        last = head
+        for anchor in self._lines[head.n:]:
+            stripped = anchor.content.strip()
+            indent = len(anchor.content) - len(anchor.content.lstrip())
+            if stripped and indent <= base:
+                break
+            if stripped:
+                last = anchor
+        return head, last
+
+    def swap_range(self, first, last, lines):
+        self._ops.append(Op("swap", first, last, list(lines)))
+
+    def insert_before(self, anchor, lines):
+        self._ops.append(Op("insert_before", anchor, anchor, list(lines)))
+
+    def insert_after(self, anchor, lines):
+        self._ops.append(Op("insert_after", anchor, anchor, list(lines)))
+
+    def delete(self, anchor):
+        self._ops.append(Op("delete", anchor, anchor, []))
+
     def swap(self, anchor, lines):
         self._ops.append(Op("swap", anchor, anchor, list(lines)))
 
@@ -164,6 +234,15 @@ class Editor:
                     out.append("SWAP %d:%s:" % (first.n, first.hash))
                 else:
                     out.append("SWAP %d:%s..%d:%s:" % (first.n, first.hash, last.n, last.hash))
+                out.extend("+" + line for line in op.lines)
+            elif op.kind == "delete":
+                if first.n == last.n:
+                    out.append("DEL %d:%s" % (first.n, first.hash))
+                else:
+                    out.append("DEL %d..%d" % (first.n, last.n))
+            elif op.kind in ("insert_before", "insert_after"):
+                keyword = "INS.PRE" if op.kind == "insert_before" else "INS.POST"
+                out.append("%s %d:%s:" % (keyword, first.n, first.hash))
                 out.extend("+" + line for line in op.lines)
             else:
                 raise NotImplementedError(op.kind)

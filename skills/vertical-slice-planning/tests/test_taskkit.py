@@ -138,5 +138,54 @@ class TestFallback(ScratchRepo):
         self.assertTrue(text.endswith("\n"))
 
 
+class TestOps(ScratchRepo):
+    def test_insert_after(self):
+        with Editor("client.py") as ed:
+            ed.insert_after(ed.locate("def send(req):"), ["    log.debug('send')"])
+        self.assertIn("def send(req):\n    log.debug('send')\n", self.read("client.py"))
+
+    def test_insert_before(self):
+        with Editor("client.py") as ed:
+            ed.insert_before(ed.locate("def send(req):"), ["import log"])
+        self.assertTrue(self.read("client.py").startswith("import log\ndef send(req):"))
+
+    def test_delete(self):
+        with Editor("client.py") as ed:
+            ed.delete(ed.locate('    return "ok"'))
+        self.assertNotIn('return "ok"', self.read("client.py"))
+
+    def test_multiple_ops_in_one_patch_use_original_numbering(self):
+        with Editor("client.py") as ed:
+            ed.insert_before(ed.locate("def send(req):"), ["import log"])
+            ed.swap(ed.locate("    return _post(req)"), ["    return _post(req, retries=3)"])
+        text = self.read("client.py")
+        self.assertTrue(text.startswith("import log\n"))
+        self.assertIn("retries=3", text)
+
+    def test_locate_block_replaces_a_whole_function(self):
+        with Editor("client.py") as ed:
+            first, last = ed.locate_block("def ping():")
+            ed.swap_range(first, last, ["def ping():", '    return "pong"'])
+        text = self.read("client.py")
+        self.assertIn('return "pong"', text)
+        self.assertNotIn('return "ok"', text)
+        self.assertIn("def send(req):", text)
+
+    def test_locate_contains(self):
+        with Editor("client.py") as ed:
+            ed.swap(ed.locate_contains("_post("), ["    return _post(req, retries=3)"])
+        self.assertIn("retries=3", self.read("client.py"))
+
+    def test_create_file_is_idempotent(self):
+        taskkit.create_file("svc/orders.py", "def handle(req):\n    return {}\n")
+        taskkit.create_file("svc/orders.py", "def handle(req):\n    return {}\n")
+        self.assertIn("def handle(req):", self.read("svc/orders.py"))
+
+    def test_create_file_conflicting_content_is_drift(self):
+        taskkit.create_file("svc/orders.py", "a\n")
+        with self.assertRaises(taskkit.Drift):
+            taskkit.create_file("svc/orders.py", "b\n")
+
+
 if __name__ == "__main__":
     unittest.main()
