@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-12-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-14-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -267,6 +267,32 @@ Wraps the `hashline` MCP server, which any harness with native MCP support can r
 | **Loop** | `read` for anchors → `patch` citing `line:hash` → patch result is the re-read file, so it verifies itself |
 | **Ops** | `SWAP` · `DEL` · `INS.PRE/POST/HEAD/TAIL` · `SWAP.BLK` / `DEL.BLK` for whole syntactic blocks · `dry_run` |
 | **Setup** | MCP: `{"command": "hashline", "args": ["mcp"]}` · Prime Agent: `cp -r skills/hashline ~/.prime/agent/skills/` |
+
+### 🧱 [Vertical Slice Planning](skills/vertical-slice-planning/)
+
+Turns "plan this out" into an executable plan directory instead of a prose checklist. Tasks are ordered as vertical slices — task one wires a seam end-to-end with the most trivial payload that can be verified, later tasks thicken it — so integration defects surface on day one rather than at the end.
+
+Each task is a single idempotent Python script that applies its own change through [hashline](skills/hashline/) and proves it with runnable gates, so a gate can never be prose that nothing forces to run. The skill is plan-only: it emits the directory and stops, leaving execution to a human or another agent.
+
+| | |
+|---|---|
+| **Trigger** | "plan this out" · "break this into tasks" · "write a plan for wiring X to Y" |
+| **Output** | `docs/plans/YYYY-MM-DD-<feature>/` — `plan.md`, `plan_superpowers.md`, `run.py`, `tasks/task_NN_*.py` |
+| **Gates** | T0 structural (the edit landed) · T1 component tests · T2 a real call across the seam — never deferrable |
+| **Scope** | Plan-only — emits the directory and stops |
+
+### 📈 [Company Analysis](skills/company-analysis/)
+
+Produces a deterministic research report for a ticker: price performance over 1d/1w/3m/YTD, market news, earnings, sentiment split into bearish and bullish sections, analyst recommendations, and a simulation of buying 5, 10, or 25 shares net of fees and taxes at both short- and long-term holding rates.
+
+The report is generated entirely by two bundled tools — a Go fetcher and a Python formatter — and the skill forbids the agent from writing, rewording, or summarizing any part of it. Two runs on the same data produce the same text. It is a report and a simulation, not financial advice.
+
+| | |
+|---|---|
+| **Trigger** | `/company-analysis <TICKER>` · a request to analyze a company or its stock |
+| **Run** | `./tools/company-analysis/run.sh <TICKER>` — Go tool fetches and simulates, Python assembles the Markdown |
+| **Requires** | Python 3.6+ (required) · Go 1.25+ (optional — falls back to the bundled Linux x86-64 binary) |
+| **Determinism** | The agent shows the output verbatim; it never composes, reorders, or summarizes the report |
 
 ---
 
