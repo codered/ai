@@ -274,6 +274,10 @@ Turns "plan this out" into an executable plan directory instead of a prose check
 
 Each task is a single idempotent Python script that applies its own change through [hashline](skills/hashline/) and proves it with runnable gates, so a gate can never be prose that nothing forces to run. The skill is plan-only: it emits the directory and stops, leaving execution to a human or another agent.
 
+<p align="center">
+  <img src="assets/demo/vertical-slice-planning/demo.gif" alt="The skill mapping seams, ordering four tasks as vertical slices with T1/T2 tiers, emitting the plan directory, then running --status to show every gate red before execution" width="700">
+</p>
+
 | | |
 |---|---|
 | **Trigger** | "plan this out" · "break this into tasks" · "write a plan for wiring X to Y" |
@@ -286,6 +290,12 @@ Each task is a single idempotent Python script that applies its own change throu
 Produces a deterministic research report for a ticker: price performance over 1d/1w/3m/YTD, market news, earnings, sentiment split into bearish and bullish sections, analyst recommendations, and a simulation of buying 5, 10, or 25 shares net of fees and taxes at both short- and long-term holding rates.
 
 The report is generated entirely by two bundled tools — a Go fetcher and a Python formatter — and the skill forbids the agent from writing, rewording, or summarizing any part of it. Two runs on the same data produce the same text. It is a report and a simulation, not financial advice.
+
+<p align="center">
+  <img src="assets/demo/company-analysis/demo.gif" alt="The skill running run.sh AAPL and showing the generated report verbatim — price changes, earnings, bearish and other headlines, and the trade simulation table" width="760">
+  <br>
+  <sub>Prices, headlines, and simulation rows from a real <code>AAPL</code> run captured 2026-09-08; long headlines and 8 of the 12 simulation rows elided to fit the frame. (<a href="assets/demo/company-analysis/demo.tape">regenerate with VHS</a>)</sub>
+</p>
 
 | | |
 |---|---|
