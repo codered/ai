@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-14-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-15-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -284,6 +284,19 @@ Each task is a single idempotent Python script that applies its own change throu
 | **Output** | `docs/plans/YYYY-MM-DD-<feature>/` — `plan.md`, `plan_superpowers.md`, `run.py`, `tasks/task_NN_*.py` |
 | **Gates** | T0 structural (the edit landed) · T1 component tests · T2 a real call across the seam — never deferrable |
 | **Scope** | Plan-only — emits the directory and stops |
+
+### 🧰 [Worker-Proof Planning](skills/worker-proof-planning/)
+
+Writes implementation plans that a less capable model — a Haiku worker, a subagent, another session — can carry out without asking questions, and checks the worker's report against the repository afterwards. Every step is an exact edit, a script, or a command followed by its complete expected output. Every plan starts with a starting-state check and ends with a PASS/FAIL gate that has one line per requirement.
+
+Before handing a plan over, the planner runs it: the bundled `simulate_plan.py` clones the repository, applies every edit, runs every command, and compares each check with the output the plan promises. A plan is handed over only when the simulation reports zero problems, so a wrong line number, a count written from memory, or a check that cannot fail is caught by the planner, not by the worker.
+
+| | |
+|---|---|
+| **Trigger** | "write a plan for my worker" · "plan this for Haiku" · "verify the worker's report" |
+| **Output** | A plan in the step contract, simulated to `0 problem(s)` before handover |
+| **Checks** | Exact expected output after every step · red before green · a final gate with one line per requirement |
+| **Scope** | Plans and verifies — the worker executes |
 
 ### 📈 [Company Analysis](skills/company-analysis/)
 
