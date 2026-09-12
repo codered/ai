@@ -66,6 +66,7 @@ countable subset as a table at the top of the script.
 | `COMPACT when context > <pct>%` | GLOBAL | 0..1 | Orchestrator compacts at this context usage |
 | `COMPACT after wave` | GLOBAL | 0..1 | Orchestrator compacts between waves |
 | `TASKLIST on\|off` | GLOBAL | 0..1 | Orchestrator mirrors tasks into its todo list. Default off. |
+| `WORKTREES <dir>` | GLOBAL | 0..1 | Directory for task worktrees, relative to the repo root. Default `.worktrees`. |
 | `PERMIT <action> <glob…>` | GLOBAL, TASK | 0..n | Allow an action. In a TASK, narrowing only. |
 | `DENY <action> <glob…>` | GLOBAL, TASK | 0..n | Forbid an action. A TASK may only add restrictions. |
 | `DEPENDS <id> …` | TASK | 0..n | Explicit dependency |
@@ -112,7 +113,10 @@ root failure.
   same action. Every task FILES glob must be a subset of the effective write PERMIT.
 - **Dependency graph.** Edges come from DEPENDS and from every `${id.key}` in the task's
   text. Waves are the topological levels of the graph.
-- **Parallel safety.** Two tasks in the same wave must not have overlapping FILES.
+- **Parallel safety.** Each task runs in its own git worktree (section 4). Two tasks in the
+  same wave must not have overlapping FILES, so their branches merge without conflicts.
+- **Paths.** FILES and path globs are relative to the repository root. They mean the same
+  thing in every worktree.
 
 ### Example
 
@@ -208,30 +212,81 @@ the user wants several plans. Never overwrite an existing file without asking.
 
 **Start:** only on an explicit request, from the author prompt or a later "run <file>".
 
-1. **Validate.** Run `ste_lint.py --json`. Refuse an invalid file. Reset `in_progress` tasks
-   to `pending` (they come from an interrupted run). When `TASKLIST on`, mirror all tasks
-   into the orchestrator's todo list.
-2. **For each wave, in order:**
+1. **Validate.** Run `ste_lint.py --json`. Refuse an invalid file. When `TASKLIST on`, mirror
+   all tasks into the orchestrator's todo list.
+2. **Prepare the workspace** (see "Worktree model" below). Require a clean working tree,
+   apart from the Taskfile. Require the WORKTREES directory to be in `.gitignore`. Create
+   or check out the integration branch.
+3. **Reset interrupted tasks.** An `in_progress` task comes from an interrupted run. Rename
+   its branch to `<branch>-attempt-<n>`, remove its worktree directory, and set it to
+   `pending`. The old branch keeps its commits.
+4. **For each wave, in order:**
    - Skip tasks at `completed_success`.
    - Mark a task whose dependency is `completed_failure` or `blocked` as
      `blocked BY <that dependency>`.
-   - Set the other tasks to `in_progress` and write the file.
+   - For each remaining task, create its worktree and branch from the current integration
+     branch head. Set the task to `in_progress` and write the file.
    - Dispatch one subagent per task, never more than `AGENTS max` at once. Queue the rest
      and start one each time a slot frees.
-   - Each subagent prompt contains: the GLOBAL block verbatim; its TASK block with `${}`
-     values filled in from dependency OUTPUTs; and the FLOW contract.
-   - For each report: confirm the VERIFY evidence and that changed files ⊆ FILES. Re-run
-     VERIFY when the evidence is missing. Write `completed_success`, or
-     `completed_failure BECAUSE <reason>`. A report that claims success but fails VERIFY is a
-     failure.
+   - Each subagent prompt contains: its worktree path; the GLOBAL block verbatim; its TASK
+     block with `${}` values filled in from dependency OUTPUTs; and the FLOW contract.
+   - For each report, run the checks in "Audit and merge" below. Write
+     `completed_success`, or `completed_failure BECAUSE <reason>`.
    - Between waves, and whenever context usage passes the threshold, apply the COMPACT
      triggers. The Taskfile's STATUS lines are the source of truth. Re-read the file after
      compaction.
-3. **Finish.** Print a table of each task's final STATUS, with BY chains, and stop. There
-   are no automatic retries. A re-run skips completed tasks.
+5. **Finish.** Print a table of each task's final STATUS, with BY chains, branch names, and
+   the worktree path of each failed task. Stop. There are no automatic retries. A re-run
+   skips completed tasks. The orchestrator never merges the integration branch into the
+   user's branch. The user decides that.
+
+### Worktree model
+
+Every task runs in its own git worktree, so parallel tasks never share files. Git records
+each task's work separately, and no work is lost.
+
+| Item | Value |
+|---|---|
+| Base branch | The branch checked out when the run starts |
+| Integration branch | `taskfile/<plan-name>`, created from the base branch on the first run and reused on later runs |
+| Task branch | `taskfile/<plan-name>/<task-id>` |
+| Task worktree | `<WORKTREES>/<plan-name>/<task-id>` |
+| Taskfile | Stays in the main working tree. The orchestrator edits it there and does not commit STATUS changes. |
+
+- The orchestrator creates worktrees with `git worktree add`. It does not use a harness
+  isolation feature that picks its own paths or cleans up by itself, because the plan must
+  control the names.
+- A task branch starts from the integration branch after every earlier wave is merged. A
+  task therefore sees the results of all its dependencies.
+- The subagent works only in its worktree and commits there.
+
+### Audit and merge
+
+The orchestrator does these steps for each report, in the order that reports arrive. It
+merges one task at a time.
+
+1. **Save everything.** If the worktree has uncommitted changes, commit them as
+   `<task-id>: uncommitted changes at report`.
+2. **Attribute.** Compute `git diff --name-only <fork-point>..<task-branch>`. Every path must
+   match the task's FILES. Otherwise the task fails
+   `BECAUSE changed files outside FILES`.
+3. **Verify in isolation.** Run each VERIFY command in the task worktree. Any non-zero exit
+   fails the task. A report that claims success does not override this.
+4. **Merge.** Merge the task branch into the integration branch with `--no-ff`. The commit
+   message is `taskfile(<plan-name>): merge <task-id>`.
+5. **Verify after the merge.** Run the task's VERIFY commands on the integration branch. If
+   one fails, reset the integration branch to its commit before the merge. Fail the task
+   `BECAUSE VERIFY failed after merge`. The task branch stays as it is.
+6. **Clean up.** On success, remove the worktree directory and keep the branch. On failure,
+   keep both the worktree and the branch so the user can inspect them.
+
+The orchestrator owns the integration branch, so step 5 can reset it safely. It never resets
+the base branch or a task branch.
 
 **FLOW contract (sent to each subagent):**
 
+- Work only in your worktree. Do not change the main working tree or another worktree.
+- Commit your changes on your task branch before `report`. Do not merge, rebase, or push.
 - Do the FLOW steps in order. Omit only the steps your SKIP lines name.
 - Use only the TOOL named for each role.
 - Stay inside PERMIT, DENY, and FILES.
@@ -241,8 +296,8 @@ the user wants several plans. Never overwrite an existing file without asking.
 - End with `report`, including on failure.
 - If your context runs out, report `completed_failure BECAUSE context limit`.
 
-**Single writer.** Only the orchestrator edits the Taskfile, which prevents races between
-parallel subagents. The orchestrator relays heartbeats to the user and never writes them to
+**Single writer.** Only the orchestrator edits the Taskfile and the integration branch, which
+prevents races between parallel subagents. The orchestrator relays heartbeats to the user and never writes them to
 the file.
 
 ## Error handling summary
@@ -252,8 +307,12 @@ the file.
 | Invalid file | Mode 2 refuses to start and prints lint errors |
 | Subagent failure | Task becomes `completed_failure`; dependents become `blocked BY` it; independent tasks continue |
 | False success report | Orchestrator's VERIFY check fails the task |
-| Subagent changes files outside FILES | Task becomes `completed_failure BECAUSE changed files outside FILES` |
-| Interrupted run | `in_progress` resets to `pending` on the next run |
+| Subagent changes files outside FILES | The task-branch diff shows it; task becomes `completed_failure BECAUSE changed files outside FILES` |
+| Subagent leaves uncommitted changes | Orchestrator commits them on the task branch, then audits |
+| VERIFY passes in the worktree but fails after the merge | Integration branch resets to its pre-merge commit; task becomes `completed_failure BECAUSE VERIFY failed after merge` |
+| Merge conflict | Should not occur, because FILES are disjoint within a wave. If it occurs, abort the merge and fail the task `BECAUSE merge conflict` |
+| Dirty working tree or WORKTREES not ignored | Mode 2 refuses to start and names the problem |
+| Interrupted run | The old task branch is renamed `-attempt-<n>`; the task resets to `pending` on the next run |
 | Subagent context exhausted | `completed_failure BECAUSE context limit`; the user splits the task |
 
 ## Testing
@@ -262,3 +321,6 @@ the file.
 - Skill behaviour: one scenario run per mode under `superpowers:writing-skills`, checking that
   Mode 1 stops at the run-now-or-later question, and that Mode 2 respects AGENTS max and writes
   `blocked BY`.
+- Worktree model: a scenario run in a scratch repository with two parallel tasks and one
+  dependent task. Check the branch names, one `--no-ff` merge per successful task, that a
+  failed task keeps its worktree, and that a deliberate out-of-FILES edit fails the audit.
