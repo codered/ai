@@ -290,5 +290,67 @@ class SteTest(LintCase):
         self.assertEqual(ste_lint.ste_problems(text), [])
 
 
+class JsonTest(unittest.TestCase):
+    def test_waves_and_json_together_exit_2(self):
+        self.assertEqual(run("valid-three-waves.ste", "--waves", "--json")[0], 2)
+
+    def test_json_shape(self):
+        code, out, _ = run("example.ste", "--json", cwd=REFS)
+        self.assertEqual(code, 0)
+        data = json.loads(out)
+        self.assertEqual(sorted(data), ["global", "plan", "tasks", "waves"])
+        self.assertEqual(data["plan"], {
+            "name": "health-check", "version": "1",
+            "integration_branch": "taskfile/health-check/integration",
+            "integration_worktree": ".worktrees/health-check/integration"})
+        g = data["global"]
+        self.assertEqual(g["agents_max"], 3)
+        self.assertEqual(g["flow"], ["read", "tasklist", "edit", "fmt", "build", "verify", "report"])
+        self.assertEqual(g["tools"]["fmt"], "ruff format")
+        self.assertEqual(g["deny"], {"network": ["**"]})
+        self.assertEqual((g["heartbeat_every"], g["compact_after_wave"], g["tasklist"]), (2, True, True))
+        self.assertEqual(g["worktrees"], ".worktrees")
+        self.assertTrue(g["text"].startswith("GLOBAL\n") and g["text"].endswith("END"))
+        self.assertEqual(data["waves"], [["schema"], ["endpoint"]])
+        endpoint = data["tasks"][1]
+        self.assertEqual(endpoint["id"], "endpoint")
+        self.assertEqual(endpoint["depends"], ["schema"])
+        self.assertEqual(endpoint["wave"], 2)
+        self.assertEqual(endpoint["skips"], {"build": "This task does not change the package."})
+        self.assertEqual(endpoint["status"], {"state": "pending", "because": None, "by": None})
+        self.assertEqual(endpoint["branch"], "taskfile/health-check/tasks/endpoint")
+        self.assertEqual(endpoint["worktree"], ".worktrees/health-check/tasks/endpoint")
+        self.assertIn("${schema.table}", endpoint["text"])
+        self.assertEqual(data["tasks"][0]["outputs"], {"table": "health_log"})
+
+
+
+class AuditTest(unittest.TestCase):
+    def audit(self, task_id, stdin):
+        proc = subprocess.run([sys.executable, TOOL, "example.ste", "--audit", task_id], cwd=REFS,
+                              input=stdin, capture_output=True, text=True)
+        return proc.returncode, proc.stdout
+
+    def test_paths_inside_files_pass(self):
+        self.assertEqual(self.audit("endpoint", "src/api.py\ntests/test_health.py\n"), (0, ""))
+
+    def test_paths_outside_files_are_printed(self):
+        self.assertEqual(self.audit("endpoint", "src/api.py\nsrc/db.py\nREADME.md\n"),
+                         (1, "src/db.py\nREADME.md\n"))
+
+    def test_glob_files(self):
+        model, _ = ste_lint.lint(BASE.replace("FILES src/one.py", "FILES src/**"))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = ste_lint.audit(model, "one", ["src/a/b.py", "tests/x.py"])
+        self.assertEqual((code, out.getvalue()), (1, "tests/x.py\n"))
+
+    def test_empty_diff_passes(self):
+        self.assertEqual(self.audit("schema", ""), (0, ""))
+
+    def test_unknown_task_exits_2(self):
+        self.assertEqual(self.audit("nope", "")[0], 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Validate a Taskfile.ste plan.
 
-Usage: ste_lint.py FILE [--waves]
+Usage: ste_lint.py FILE [--waves | --json | --audit TASK_ID]
 
 Exit 0: the file is valid. Exit 1: errors, one per line as FILE:LINE: CODE message.
 Exit 2: usage or IO error. Standard library only.
+
+--audit TASK_ID reads changed paths from stdin, one per line, and prints each path
+that the task's FILES do not match. It exits 1 when it prints a path.
 """
 import argparse
+import json
 import re
 import sys
 
@@ -649,10 +653,63 @@ def lint(source):
     return model, sorted(model.errors, key=lambda e: (e[0], e[1]))
 
 
+def to_json(model):
+    """The plan as data, so that the orchestrator never parses the file."""
+    g = model.global_block
+    name = model.plan_name
+    return {
+        "plan": {"name": name, "version": model.plan_version,
+                 "integration_branch": f"taskfile/{name}/integration",
+                 "integration_worktree": f"{g.worktrees}/{name}/integration"},
+        "global": {
+            "env": g.env, "stack": g.stack,
+            "tools": {role: command for role, command, _ in g.tools},
+            "flow": g.flow, "rules": [text for text, _ in g.rules],
+            "agents_max": g.agents, "heartbeat_every": g.heartbeat,
+            "compact_when_context_pct": g.compact_pct, "compact_after_wave": g.compact_after,
+            "tasklist": g.tasklist, "worktrees": g.worktrees,
+            "permit": group(g.permit), "deny": group(g.deny),
+            "text": "\n".join(g.lines),
+        },
+        "tasks": [{
+            "id": t.id, "line": t.line, "wave": t.wave, "depends": t.deps,
+            "goal": t.goal[0], "steps": [text for text, _ in t.steps],
+            "files": [glob for glob, _ in t.files], "outputs": t.outputs,
+            "skips": {step: reason for step, reason, _ in t.skips},
+            "verify": [command for command, _ in t.verify],
+            "permit": group(t.permit), "deny": group(t.deny),
+            "status": {"state": t.status["state"] if t.status else "pending",
+                       "because": t.status["because"] if t.status else None,
+                       "by": t.status["by"] if t.status else None},
+            "branch": f"taskfile/{name}/tasks/{t.id}",
+            "worktree": f"{g.worktrees}/{name}/tasks/{t.id}",
+            "text": "\n".join(t.lines),
+        } for t in model.tasks],
+        "waves": model.waves,
+    }
+
+
+def audit(model, task_id, paths):
+    """Print each path outside the task's FILES. Return the exit code."""
+    task = next((t for t in model.tasks if t.id == task_id), None)
+    if task is None:
+        print(f"no task {task_id}", file=sys.stderr)
+        return 2
+    patterns = [glob_regex(glob) for glob, _ in task.files]
+    outside = [p for p in (p.strip() for p in paths) if p and not any(r.match(p) for r in patterns)]
+    for path in outside:
+        print(path)
+    return 1 if outside else 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Validate a Taskfile.ste plan.")
     parser.add_argument("file")
-    parser.add_argument("--waves", action="store_true", help="print one line per wave")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--waves", action="store_true", help="print one line per wave")
+    mode.add_argument("--json", action="store_true", help="print the plan as JSON")
+    mode.add_argument("--audit", metavar="TASK_ID",
+                      help="print each path from stdin that the task's FILES do not match")
     args = parser.parse_args(argv)
     try:
         with open(args.file, encoding="utf-8") as handle:
@@ -668,6 +725,10 @@ def main(argv=None):
     if args.waves:
         for number, wave in enumerate(model.waves, 1):
             print(f"wave {number}: {' '.join(wave)}")
+    elif args.json:
+        print(json.dumps(to_json(model), indent=2))
+    elif args.audit:
+        return audit(model, args.audit, sys.stdin.read().splitlines())
     return 0
 
 
