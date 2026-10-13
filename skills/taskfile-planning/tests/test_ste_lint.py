@@ -210,5 +210,48 @@ class PermissionTest(LintCase):
         self.assertEqual(errors(source), ["15: P003 FILES src/one.py is forbidden by DENY write src/one.py"])
 
 
+class FlowTest(LintCase):
+    def test_f001_unknown_flow_step(self):
+        self.assert_fixture("f001-unknown-flow-step.ste",
+                            ["9: F001 FLOW step lint is not a TOOL role or a built-in step"])
+
+    def test_f002_skip_not_in_flow(self):
+        self.assert_fixture("f002-skip-not-in-flow.ste",
+                            ["15: F002 SKIP build names a step that is not in FLOW"])
+
+    def test_f003_skip_verify(self):
+        self.assert_fixture("f003-skip-verify.ste",
+                            ["15: F003 SKIP verify is not allowed; verify and report always run"])
+
+    def test_f004_duplicate_tool_role(self):
+        self.assert_fixture("f004-duplicate-tool-role.ste", ["9: F004 TOOL role edit is declared twice"])
+
+
+class StatusTest(LintCase):
+    def test_x001_unknown_state(self):
+        self.assert_fixture("x001-unknown-state.ste", [
+            "16: X001 unknown state done; use one of: pending, in_progress, "
+            "completed_success, completed_failure, blocked"])
+
+    def test_x002_failure_without_because(self):
+        self.assert_fixture("x002-failure-without-because.ste",
+                            ["16: X002 completed_failure needs BECAUSE <sentence>"])
+
+    def test_x003_blocked_without_by(self):
+        self.assert_fixture("x003-blocked-without-by.ste", ["24: X003 blocked needs BY <id>"])
+
+    def test_x004_by_not_failed_dependency(self):
+        self.assert_fixture("x004-by-not-failed-dependency.ste",
+                            ["24: X004 BY one names a task in state completed_success"])
+
+    def test_x005_started_before_dependency(self):
+        self.assert_fixture("x005-started-before-dependency.ste",
+                            ["23: X005 task two is completed_success but dependency one is pending"])
+
+    def test_interrupted_run_is_valid(self):
+        code, out, _ = run("valid-interrupted-run.ste")
+        self.assertEqual((code, out), (0, ""))
+
+
 if __name__ == "__main__":
     unittest.main()

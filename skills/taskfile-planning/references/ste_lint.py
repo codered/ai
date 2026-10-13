@@ -31,6 +31,15 @@ CODES = {
     "P003": "PERMIT or FILES glob is forbidden by a DENY",
     "P004": "PERMIT spawn is not allowed",
     "P005": "VERIFY command is not inside PERMIT run",
+    "F001": "FLOW step is not a TOOL role or a built-in step",
+    "F002": "SKIP names a step that is not in FLOW",
+    "F003": "SKIP of verify or report",
+    "F004": "TOOL role declared twice",
+    "X001": "unknown state",
+    "X002": "BECAUSE must go with completed_failure, and only with it",
+    "X003": "BY must go with blocked, and only with it",
+    "X004": "BY names a task that is not a failed or blocked dependency",
+    "X005": "task started or finished before a dependency succeeded",
 }
 
 ID_RE = re.compile(r"[a-z][a-z0-9-]*\Z")
@@ -481,7 +490,61 @@ def check_permissions(model):
                 err(line, "P005", f"VERIFY command {program} is forbidden by DENY run")
 
 
-SEMANTIC_CHECKS = [check_graph, check_permissions]
+def check_flow(model):
+    err = model.err
+    g = model.global_block
+    roles = set()
+    for role, _, line in g.tools:
+        if role in roles:
+            err(line, "F004", f"TOOL role {role} is declared twice")
+        roles.add(role)
+    for step in g.flow:
+        if step not in roles and step not in BUILTINS:
+            err(g.flow_line, "F001", f"FLOW step {step} is not a TOOL role or a built-in step")
+    for t in model.tasks:
+        for step, _, line in t.skips:
+            if step in ("verify", "report"):
+                err(line, "F003", f"SKIP {step} is not allowed; verify and report always run")
+            elif step not in g.flow:
+                err(line, "F002", f"SKIP {step} names a step that is not in FLOW")
+
+
+def check_status(model):
+    err = model.err
+    by_id = {t.id: t for t in model.tasks}
+
+    def state(t):
+        return t.status["state"] if t.status else "pending"
+
+    for t in model.tasks:
+        s = t.status
+        if s is None:
+            continue
+        line = s["line"]
+        if s["state"] not in STATES:
+            err(line, "X001", f"unknown state {s['state']}; use one of: {', '.join(STATES)}")
+            continue
+        if s["state"] == "completed_failure" and not s["because"]:
+            err(line, "X002", "completed_failure needs BECAUSE <sentence>")
+        if s["because"] and s["state"] != "completed_failure":
+            err(line, "X002", "BECAUSE is allowed only with completed_failure")
+        if s["state"] == "blocked" and not s["by"]:
+            err(line, "X003", "blocked needs BY <id>")
+        if s["by"] and s["state"] != "blocked":
+            err(line, "X003", "BY is allowed only with blocked")
+        if s["by"] and s["state"] == "blocked":
+            if s["by"] not in t.deps:
+                err(line, "X004", f"BY {s['by']} is not a dependency of task {t.id}")
+            elif state(by_id[s["by"]]) not in ("completed_failure", "blocked"):
+                err(line, "X004", f"BY {s['by']} names a task in state {state(by_id[s['by']])}")
+        if s["state"] in ("in_progress", "completed_success", "completed_failure"):
+            for dep in t.deps:
+                if state(by_id[dep]) != "completed_success":
+                    err(line, "X005", f"task {t.id} is {s['state']} but dependency {dep} "
+                                      f"is {state(by_id[dep])}")
+
+
+SEMANTIC_CHECKS = [check_graph, check_permissions, check_flow, check_status]
 
 
 def lint(source):
