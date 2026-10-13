@@ -21,6 +21,11 @@ CODES = {
     "S008": "block not closed, or END without a block",
     "S009": "the file needs exactly one GLOBAL block",
     "S010": "directive arguments have the wrong form",
+    "G001": "DEPENDS names an unknown task",
+    "G002": "${id.key} names an unknown task",
+    "G003": "${id.key} names an OUTPUT the task does not declare",
+    "G004": "dependency cycle",
+    "G005": "FILES overlap within a wave",
 }
 
 ID_RE = re.compile(r"[a-z][a-z0-9-]*\Z")
@@ -298,7 +303,99 @@ def parse(source):
     return model
 
 
-SEMANTIC_CHECKS = []
+WILD = re.compile(r"[*?]")
+
+
+def has_wild(glob):
+    return bool(WILD.search(glob))
+
+
+def literal_prefix(glob):
+    match = WILD.search(glob)
+    return glob[:match.start()] if match else glob
+
+
+def glob_regex(glob):
+    """Translate a glob: ** crosses directories, * and ? stay inside one directory."""
+    out, i = [], 0
+    while i < len(glob):
+        if glob.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif glob.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif glob[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif glob[i] == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(glob[i]))
+            i += 1
+    return re.compile("".join(out) + r"\Z")
+
+
+def globs_overlap(a, b):
+    """Conservative: two wildcard globs overlap when one literal prefix starts the other."""
+    if not has_wild(a) and not has_wild(b):
+        return a == b
+    if not has_wild(a):
+        return bool(glob_regex(b).match(a))
+    if not has_wild(b):
+        return bool(glob_regex(a).match(b))
+    pa, pb = literal_prefix(a), literal_prefix(b)
+    return pa.startswith(pb) or pb.startswith(pa)
+
+
+def check_graph(model):
+    """Resolve each task's dependencies, check them, and compute the waves."""
+    err = model.err
+    by_id = {t.id: t for t in model.tasks}
+    for t in model.tasks:
+        for dep, line in t.depends:
+            if dep not in by_id:
+                err(line, "G001", f"DEPENDS names unknown task {dep}")
+        for ref_id, ref_key, line in t.refs:
+            ref = "${" + ref_id + "." + ref_key + "}"
+            if ref_id not in by_id:
+                err(line, "G002", f"{ref} names unknown task {ref_id}")
+            elif ref_key not in by_id[ref_id].outputs:
+                err(line, "G003", f"{ref}: task {ref_id} has no OUTPUT {ref_key}")
+        for dep in [d for d, _ in t.depends] + [r for r, _, _ in t.refs]:
+            if dep in by_id and dep not in t.deps:
+                t.deps.append(dep)
+    progress = True
+    while progress:
+        progress = False
+        for t in model.tasks:
+            if t.wave is None and all(by_id[d].wave is not None for d in t.deps):
+                t.wave = 1 + max((by_id[d].wave for d in t.deps), default=0)
+                progress = True
+    waiting = [t for t in model.tasks if t.wave is None]
+    if waiting:
+        path, t = [], waiting[0]
+        while t.id not in path:
+            path.append(t.id)
+            t = next(by_id[d] for d in t.deps if by_id[d].wave is None)
+        cycle = path[path.index(t.id):] + [t.id]
+        err(by_id[cycle[0]].line, "G004", "dependency cycle: " + " -> ".join(cycle))
+        return
+    model.waves = [[t.id for t in model.tasks if t.wave == number]
+                   for number in range(1, max(t.wave for t in model.tasks) + 1)]
+    for number, wave in enumerate(model.waves, 1):
+        tasks = [by_id[i] for i in wave]
+        for i, first in enumerate(tasks):
+            for second in tasks[i + 1:]:
+                for glob_a, _ in first.files:
+                    for glob_b, line in second.files:
+                        if globs_overlap(glob_a, glob_b):
+                            err(line, "G005", f"FILES {glob_b} overlaps FILES {glob_a} "
+                                              f"of task {first.id} in wave {number}")
+
+
+SEMANTIC_CHECKS = [check_graph]
 
 
 def lint(source):

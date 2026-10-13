@@ -1,0 +1,36 @@
+PLAN health-check 1
+
+GLOBAL
+  ENV        os=linux python=3.12
+  STACK      fastapi postgres
+  AGENTS     max 3
+  PERMIT     read **
+  PERMIT     write src/** tests/** migrations/**
+  PERMIT     run uv pytest ruff
+  DENY       network
+  TOOL edit  hashline
+  TOOL fmt   ruff format
+  TOOL build uv build
+  FLOW       read -> tasklist -> edit -> fmt -> build -> verify -> report
+  RULE       Do not change files outside FILES.
+  HEARTBEAT  every 2 steps
+  COMPACT    after wave
+  TASKLIST   on
+END
+
+TASK schema
+  GOAL      Add the table "health_log".
+  FILES     migrations/004_health.sql
+  OUTPUT    table = health_log
+  VERIFY    pytest tests/test_migrations.py
+  STATUS    completed_success
+END
+
+TASK endpoint
+  DEPENDS   schema
+  GOAL      Add the GET /health endpoint.
+  STEP      Write one row to ${schema.table} for each request.
+  FILES     src/api.py tests/test_health.py
+  SKIP      build BECAUSE This task does not change the package.
+  VERIFY    pytest tests/test_health.py
+END

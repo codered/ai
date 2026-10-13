@@ -141,5 +141,38 @@ class StructureTest(LintCase):
                          ["16: S010 STATUS needs <state> [BECAUSE <sentence>] [BY <id>]"])
 
 
+class GraphTest(LintCase):
+    def test_g001_unknown_depends(self):
+        self.assert_fixture("g001-unknown-depends.ste", ["13: G001 DEPENDS names unknown task two"])
+
+    def test_g002_unknown_ref_task(self):
+        self.assert_fixture("g002-unknown-ref-task.ste",
+                            ["14: G002 ${two.module} names unknown task two"])
+
+    def test_g003_unknown_ref_key(self):
+        self.assert_fixture("g003-unknown-ref-key.ste",
+                            ["21: G003 ${one.package}: task one has no OUTPUT package"])
+
+    def test_g004_cycle(self):
+        self.assert_fixture("g004-cycle.ste", ["12: G004 dependency cycle: one -> two -> one"])
+
+    def test_g004_self_reference(self):
+        source = BASE.replace("  GOAL Add the module.",
+                              "  GOAL Add the module.\n  OUTPUT name = one\n  STEP Name the module ${one.name}.")
+        self.assertEqual(errors(source), ["12: G004 dependency cycle: one -> one"])
+
+    def test_g005_files_overlap(self):
+        self.assert_fixture("g005-files-overlap.ste",
+                            ["20: G005 FILES src/*.py overlaps FILES src/one.py of task one in wave 1"])
+
+    def test_three_waves(self):
+        code, out, _ = run("valid-three-waves.ste", "--waves")
+        self.assertEqual((code, out), (0, "wave 1: model docs\nwave 2: store\nwave 3: api\n"))
+
+    def test_golden_example(self):
+        code, out, _ = run("example.ste", "--waves", cwd=REFS)
+        self.assertEqual((code, out), (0, "wave 1: schema\nwave 2: endpoint\n"))
+
+
 if __name__ == "__main__":
     unittest.main()
