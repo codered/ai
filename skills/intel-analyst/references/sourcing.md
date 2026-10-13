@@ -87,8 +87,9 @@ Write the grade as one token: `B2`, `D3`, `A1`.
    say in the judgment which source was weighted more, and why, naming the
    grades: "The colleague's benchmark (C3) was weighted over the vendor blog
    (E3) because …". "Neither was weighted heavily" does not meet this rule;
-   if they are weighted equally, say so and say why. ACH weights must follow
-   the grades.
+   if they are weighted equally, say so and say why. Put this sentence in the
+   Key Judgment the conflict affects, not only in the ACH section. ACH weights
+   must follow the grades.
 6. A Key Judgment needs at least one supporting E-ID that is an observation or
    a derived row. "Not collected" rows and F-graded analyst recall can be cited
    as gaps, but never as the only support.

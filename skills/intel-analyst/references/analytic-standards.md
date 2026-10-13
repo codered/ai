@@ -43,7 +43,9 @@ not a judgment.
 ## The BLUF
 
 The BLUF contains no judgment of its own. Every judgment in it is one of the
-Key Judgments or Conclusions, with the same scale term and confidence.
+Key Judgments or Conclusions, with the same scale term and confidence. Do not
+add estimates, quantities, durations, or comparisons ("about the same cost",
+"a few days of work") that the full product does not state in the same words.
 
 Risk-level adjectives — "low risk", "moderate risk", "high risk", "overall
 risk is high" — are not probability terms. They mix likelihood and impact.

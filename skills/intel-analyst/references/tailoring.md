@@ -25,10 +25,12 @@ leads. Add it as a final `## Working Notes` section.
 2. A tailored version may shorten, reorder, or omit. It must
    never add a judgment that is absent from the full product, and must never
    raise a probability or confidence.
-3. Keep the probability terms and confidence levels word for word. "Likely
+3. Do not add estimates, quantities, durations, or comparisons that the full
+   product does not state. Copy them; do not paraphrase them.
+4. Keep the probability terms and confidence levels word for word. "Likely
    (moderate confidence)" stays "likely (moderate confidence)" in every version.
-4. Every tailored version links to the full product with a relative link:
+5. Every tailored version links to the full product with a relative link:
    `Full product: [<title>](./YYYY-MM-DD-<slug>.md)`.
-5. Write for the reader's decision. For `leadership`: what to decide, by when,
+6. Write for the reader's decision. For `leadership`: what to decide, by when,
    what it costs, and what could go wrong. Leave out the mechanism unless it
    changes the decision.

@@ -75,6 +75,9 @@ class SourcingTest(unittest.TestCase):
         self.assertIn('"Neither was weighted heavily" does not meet this rule', self.text)
         self.assertIn("never as the only support", self.text)
 
+    def test_conflict_rule_lands_in_key_judgment(self):
+        self.assertIn("Put this sentence in the\n   Key Judgment", self.text)
+
     def test_derived_items_rule(self):
         self.assertIn("`derived from E1, E3`", self.text)
         self.assertIn("Not an Evidence Log item", self.text)
@@ -92,6 +95,9 @@ class TechniquesTest(unittest.TestCase):
 
     def test_red_team_delegates_to_devils_advocate(self):
         self.assertIn("codered:devils-advocate", self.text)
+
+    def test_ach_keeps_conflicting_rows(self):
+        self.assertIn("when two sources\n   conflict, keep both rows", self.text)
 
     def test_ach_seeks_disconfirmation(self):
         self.assertIn("inconsistent", self.text.lower())

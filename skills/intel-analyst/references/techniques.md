@@ -34,7 +34,9 @@ one with the most consistent items.
 3. Build the matrix: hypotheses across, evidence down. Mark each cell:
    **C** consistent, **I** inconsistent, **N** neutral or not applicable.
 4. Remove evidence rows that are C or N for every hypothesis. They do not
-   discriminate. Keep them in the Evidence Log.
+   discriminate. Keep them in the Evidence Log. Exception: when two sources
+   conflict, keep both rows in the matrix, side by side, with their grades,
+   so the reader sees the conflict and how it was weighted.
 5. Count **I** per hypothesis. Weight an **I** from an A/B-graded source more
    than one from a D–F source. Rank hypotheses by fewest inconsistent items.
    Before ranking, count the diagnostic rows (C or I) for each hypothesis. A
