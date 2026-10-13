@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-15-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-17-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -297,6 +297,19 @@ Before handing a plan over, the planner runs it: the bundled `simulate_plan.py` 
 | **Output** | A plan in the step contract, simulated to `0 problem(s)` before handover |
 | **Checks** | Exact expected output after every step · red before green · a final gate with one line per requirement |
 | **Scope** | Plans and verifies — the worker executes |
+
+### 🕵️ [Intel Analyst](skills/intel-analyst/)
+
+Writes engineering analysis the way intelligence analysts write it. Decision briefs, investigation packages, and risk assessments follow public US Intelligence Community tradecraft: ODNI ICD 203/206/208, the CIA structured analytic techniques, NATO Admiralty source grading, and the AFOSI report-of-investigation structure. Every judgment uses one of seven fixed probability terms, states its confidence separately, and cites graded evidence from an Evidence Log. Competing hypotheses are tested with Analysis of Competing Hypotheses, and the draft is red-teamed before it is written — with Devil's Advocate in rigorous mode, inline in quick mode.
+
+Rigorous mode stops after evidence is collected and the hypotheses are formed, so you can check both before any judgment is made. Quick mode skips the checkpoint but keeps the standards. Each product is written to `docs/intel/`, with a one-page BLUF for leadership readers.
+
+| | |
+|---|---|
+| **Trigger** | "assess" · "investigate" · "root cause" · "risk assessment" · "should we use X or Y" · "intel package" |
+| **Output** | `docs/intel/YYYY-MM-DD-<slug>.md` plus tailored versions (for example `-bluf.md`) |
+| **Checks** | Seven-term probability scale · separate confidence · every judgment cites an E-ID · facts kept apart from opinion |
+| **Scope** | Unclassified engineering analysis — method only, no agency markings |
 
 ### 📈 [Company Analysis](skills/company-analysis/)
 
