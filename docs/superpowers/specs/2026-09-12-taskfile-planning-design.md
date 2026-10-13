@@ -1,7 +1,7 @@
 # taskfile-planning — Design
 
 **Date:** 2026-09-12
-**Status:** Approved in brainstorming; awaiting spec review.
+**Status:** Approved; ready for implementation planning.
 
 ## Purpose
 
