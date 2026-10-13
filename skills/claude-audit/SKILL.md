@@ -1,3 +1,8 @@
+---
+name: claude-audit
+description: Use when auditing a Claude Code setup for token waste.
+---
+
 Audit this setup for token waste. Do not fix anything. Report only.
 
 Use your shell and file tools to measure each item. If you cannot invoke slash
