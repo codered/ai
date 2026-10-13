@@ -79,6 +79,12 @@ metrics, docs, and the web. Record every item in the Evidence Log as you go:
 ID, one-sentence item, exact source, grade. Log absence of evidence too ("no
 errors before 14:00"). Log unreachable sources as "not collected: <reason>".
 
+When collection reviews code — a diff, a function under investigation, or a
+dependency's source — invoke `codered:mission-grade` and judge the code by its
+review standards. Log each finding as an observed item with the exact
+`file:line`. A finding is evidence, not a conclusion: what it means goes in
+Analysis.
+
 ### 3. Processing
 
 Separate observed facts from claims. Form two to five competing hypotheses
@@ -132,6 +138,16 @@ Load `references/techniques.md` and `references/analytic-standards.md`.
 
 ---
 
+## Acting on the product
+
+The product ends at Recommended Actions. If the user then asks you to apply
+one that refactors or fixes code, invoke `codered:mission-grade` before you
+write any code, and follow it for the change, its tests, and its commit
+message. Do not change the product to match the fix; a later product on the
+same topic records whether the judgments changed.
+
+---
+
 ## Quick mode
 
 Same cycle, compressed:
@@ -172,6 +188,7 @@ E-ID citations, and the Evidence Log are still required.
 | Source unreachable | Log "not collected: <reason>". List it under Intelligence Gaps. Continue. |
 | Sensitive data in evidence | Redact it. Cite the location, not the content. |
 | `codered:devils-advocate` or `codered:nfc` unavailable | Use the inline fallback described above. Note the fallback in the product. |
+| `codered:mission-grade` unavailable | Fallback: review the code for unchecked errors, unbounded loops and inputs, and missing tests, and say in the product (or in the reply, for a code change) that the fallback was used. |
 
 ---
 

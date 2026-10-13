@@ -107,7 +107,10 @@ If any rigorous condition is true, the mode is rigorous.
    the prompt already answers. Quick mode asks at most one.
 2. **Collection.** Gather evidence from code, git history, logs, metrics, docs,
    and the web. Record every item in the Evidence Log with an ID (E1, E2, …),
-   an exact source, and an Admiralty grade.
+   an exact source, and an Admiralty grade. Code under review (a diff, a
+   suspect function, a dependency's source) is judged with
+   `codered:mission-grade`; each finding is logged as an observed item with
+   its `file:line`.
 3. **Processing.** Separate facts from claims. Form two to five competing
    hypotheses (investigation) or options (decision) or scenarios (risk).
 4. **Checkpoint (rigorous mode only).** Show the Evidence Log, the hypotheses,
@@ -121,6 +124,10 @@ If any rigorous condition is true, the mode is rigorous.
    Judgments, narrative sections) through `codered:nfc`; tables, logs, and
    matrices are not rewritten. Write the full product, then one tailored
    version per additional reader profile.
+
+**Acting on the product.** The product ends at Recommended Actions. When the
+user asks to apply one that refactors or fixes code, `codered:mission-grade`
+governs the change, its tests, and its commit message.
 
 **Quick mode compression:** one tasking question maximum; short Evidence Log;
 no checkpoint; abbreviated ACH (options × top evidence only); Red Team reduced
@@ -267,6 +274,7 @@ judgment absent from it; each links to the full product.
 | Source unreachable (logs, web, metrics) | Log "not collected: <reason>"; list under Gaps; continue |
 | Question too vague after tasking | Restate as a precise key question; confirm once before collection |
 | `codered:devils-advocate` or `codered:nfc` unavailable | Fall back to inline Red Team (three strongest counter-arguments) or plain-writing rules; note the fallback in the product |
+| `codered:mission-grade` unavailable | Review code for unchecked errors, unbounded loops and inputs, and missing tests; note the fallback in the product or the reply |
 | Sensitive data in evidence (secrets, PII) | Redact in the Evidence Log; cite the location, not the content |
 | `docs/intel/` missing | Create it. If not inside a git repository, ask the user for an output path |
 

@@ -237,8 +237,13 @@ class SkillFileTest(unittest.TestCase):
             self.assertTrue((SKILL_DIR / rel).is_file(), rel)
 
     def test_integrations_and_fallbacks(self):
-        for s in ("codered:devils-advocate", "codered:nfc", "fallback"):
+        for s in ("codered:devils-advocate", "codered:nfc", "codered:mission-grade", "fallback"):
             self.assertIn(s, self.text)
+
+    def test_code_review_and_refactor_use_mission_grade(self):
+        text = flat("SKILL.md")
+        self.assertIn("When collection reviews code", text)
+        self.assertIn("refactors or fixes code", text)
 
     def test_output_rules(self):
         self.assertIn("docs/intel/YYYY-MM-DD-<slug>.md", self.text)
