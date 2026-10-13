@@ -171,6 +171,7 @@ structure is valid.
     python3 ste_lint.py FILE --json             # {plan, global, tasks, waves}
     git diff --name-only A..B | python3 ste_lint.py FILE --audit TASK_ID
                                                 # prints each path outside FILES; exit 1 if any
+                                                # exit 2, errors on stderr: invalid FILE or unknown TASK_ID
 
 `--json` gives each task its `branch`, `worktree`, `depends`, `wave`, `status`, and
 verbatim `text`. It gives `plan.integration_branch`, `plan.integration_worktree`, and the

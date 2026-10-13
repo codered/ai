@@ -351,6 +351,12 @@ class AuditTest(unittest.TestCase):
     def test_unknown_task_exits_2(self):
         self.assertEqual(self.audit("nope", "")[0], 2)
 
+    def test_invalid_plan_exits_2_on_stderr(self):
+        proc = subprocess.run([sys.executable, TOOL, "x005-started-before-dependency.ste", "--audit", "two"],
+                              cwd=FIXTURES, input="src/two.py\n", capture_output=True, text=True)
+        self.assertEqual((proc.returncode, proc.stdout), (2, ""))
+        self.assertIn("X005", proc.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

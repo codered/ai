@@ -41,14 +41,15 @@ Run every command from the repository root unless a step names a worktree.
    - `AGENTS max`;
    - the FLOW order.
 2. **Tasks.** Make each task one unit that one subagent can finish and verify inside its
-   own context. Add a dependency only when a task uses another task's result. Give each
-   task the narrowest FILES.
+   own context. Add a dependency only when a task uses another task's result, or when two
+   tasks must change the same file. Give each task the narrowest FILES.
 3. **STE.** Write GOAL, STEP, RULE, and BECAUSE text under the `codered:nfc` strict rules.
    One instruction per STEP. Start each STEP with an imperative verb.
 4. **Lint loop.** Run `LINT <file>` until it exits 0. Fix each error at its line.
    Never widen a GLOBAL permission to pass a check without asking the user.
 5. **Present and stop.** Show the path, the `LINT <file> --waves` output, and one line
-   per task. Then ask exactly: "Run this plan now, or later?"
+   per task. Then ask exactly: "Run this plan now, or later?" Make it the last line of
+   your message.
    - On "later", stop. Give the command to run it: "run Taskfile.ste".
    - On "now", start Mode 2.
 
@@ -106,16 +107,19 @@ picks its own paths or cleans up by itself, because the plan must control the na
      worktree and branch until the user retries it (see "Retry a failed task").
    - Write `STATUS blocked BY <dep>` on a task whose dependency is `completed_failure` or
      `blocked`. Never dispatch a blocked task.
-   - For each task that is still `pending`, run
-     `git worktree add -b <branch> <worktree> <integration-branch>`.
-     Set its STATUS to `in_progress` and save the Taskfile.
-   - Dispatch one subagent per task. Never run more than `agents_max` at once. Queue the
-     rest, and start one each time a slot frees.
+   - Queue each task that is still `pending`. Never run more than `agents_max` subagents
+     at once. Start a queued task each time a slot frees.
+   - To start a task: run `git worktree add -b <branch> <worktree> <integration-branch>`,
+     set its STATUS to `in_progress`, save the Taskfile, and dispatch one subagent. Do not
+     create the worktree or write `in_progress` for a task that is still queued.
    - Each subagent prompt contains: its worktree path; `global.text`; the task's `text`
      with each `${id.key}` replaced by that dependency's OUTPUT value; and the FLOW
      contract below.
-   - For each report, do "Audit and merge" below. Write `STATUS completed_success` or
-     `STATUS completed_failure BECAUSE <reason>`.
+   - Wait for each subagent's report. Do not audit a task before it reports. For each
+     report, do "Audit and merge" below. Then write `STATUS completed_success` or
+     `STATUS completed_failure BECAUSE <reason>`, save the Taskfile, and run
+     `LINT <file>`. It must exit 0 before you audit another report.
+   - Start the next wave only when every task in this wave has a final STATUS.
    - After the wave, apply the COMPACT triggers (see "Compaction").
 5. **Finish.** Run `git worktree remove <integration-worktree>`. Print one table row per
    task: id, final STATUS, BY chain, branch, and the worktree path of each failed task.
@@ -127,8 +131,9 @@ picks its own paths or cleans up by itself, because the plan must control the na
 
 Do this only when the user asks to retry a task that is `completed_failure`:
 
-1. If its worktree exists, run `git worktree remove --force <worktree>`. Audit step 1
-   already committed its changes.
+1. If its worktree exists and `git -C <worktree> status --porcelain` is not empty, run
+   `git -C <worktree> add -A` and commit as `<id>: uncommitted changes at retry`. Then
+   run `git worktree remove --force <worktree>`.
 2. Rename its branch to `<branch>-attempt-<n>`, as in step 3.
 3. Delete the STATUS line of that task, and of every task that is `blocked BY` it
    directly or through a BY chain. Otherwise the linter reports X004.
@@ -143,7 +148,11 @@ time. Let `INT` be the integration worktree and `WT` the task worktree.
    `git -C WT add -A` and commit as `<id>: uncommitted changes at report`.
 2. **Attribute.** Run
    `git diff --name-only $(git merge-base <integration-branch> <branch>)..<branch> | LINT <file> --audit <id>`.
-   If it exits non-zero, fail the task `BECAUSE changed files outside FILES`.
+   - Exit 0: continue.
+   - Exit 1: it printed the paths outside FILES. Fail the task
+     `BECAUSE changed files outside FILES`.
+   - Exit 2: the Taskfile is invalid, or the task id is unknown. The errors are on
+     stderr. Fix the Taskfile and run the audit again. Never merge before it exits 0.
 3. **Verify in isolation.** Run each VERIFY command in `WT`. Any non-zero exit fails the
    task. A report that claims success does not override this.
 4. **Merge.** Run `git -C INT rev-parse HEAD` and record the commit it prints as `PRE`. Run
@@ -194,6 +203,7 @@ Relay each heartbeat to the user in one line. Never write heartbeats to the Task
 | Subagent failure | The task becomes `completed_failure`; dependents become `blocked BY` it; independent tasks continue |
 | False success report | The VERIFY check in step 3 fails the task |
 | Changes outside FILES | `completed_failure BECAUSE changed files outside FILES` |
+| Audit exits 2 | The Taskfile is invalid. Fix it and audit again. Never merge first |
 | Uncommitted changes | The orchestrator commits them on the task branch, then audits |
 | VERIFY fails after the merge | The integration branch resets to `PRE`; `completed_failure BECAUSE VERIFY failed after merge` |
 | Merge conflict | Abort the merge; `completed_failure BECAUSE merge conflict` |

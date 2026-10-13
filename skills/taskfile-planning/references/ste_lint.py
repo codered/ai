@@ -7,7 +7,8 @@ Exit 0: the file is valid. Exit 1: errors, one per line as FILE:LINE: CODE messa
 Exit 2: usage or IO error. Standard library only.
 
 --audit TASK_ID reads changed paths from stdin, one per line, and prints each path
-that the task's FILES do not match. It exits 1 when it prints a path.
+that the task's FILES do not match. It exits 1 when it prints a path. It exits 2, with
+the lint errors on stderr, when FILE is invalid or TASK_ID is unknown.
 """
 import argparse
 import json
@@ -719,15 +720,17 @@ def main(argv=None):
         return 2
     model, errors = lint(source)
     if errors:
+        # In --audit mode stdout carries only paths, so lint errors go to stderr with exit 2.
+        auditing = args.audit is not None
         for line, code, message in errors:
-            print(f"{args.file}:{line}: {code} {message}")
-        return 1
+            print(f"{args.file}:{line}: {code} {message}", file=sys.stderr if auditing else sys.stdout)
+        return 2 if auditing else 1
     if args.waves:
         for number, wave in enumerate(model.waves, 1):
             print(f"wave {number}: {' '.join(wave)}")
     elif args.json:
         print(json.dumps(to_json(model), indent=2))
-    elif args.audit:
+    elif args.audit is not None:
         return audit(model, args.audit, sys.stdin.read().splitlines())
     return 0
 
