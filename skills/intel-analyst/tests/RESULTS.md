@@ -105,3 +105,50 @@ versions may not add estimates, quantities, or comparisons.
 DynamoDB. Both rated the overall-fit judgment at or near *roughly even chance*
 with low confidence, so the products agree that the evidence does not decide
 the question.
+
+## REFACTOR round 3 (P2 re-run)
+
+Both conflicting cost sources now appear in the ACH matrix with grades, and a
+Key Judgment names the weighting: "colleague benchmark (D3) was weighted over
+the vendor blog (E3)". Three consistency failures remained: the stated
+weighting did not match equal matrix weights; an option marked "insufficiently
+tested" was recommended without a provisional label; the one-pager ranked gaps
+the full product never ranked. All three are addressed in the branch-review
+fixes below.
+
+## Branch review fixes
+
+A whole-branch review found rules that made other rules impossible to
+satisfy. Fixed: quick mode keeps every template heading ("Not run (quick
+mode)."); investigation indicators go to Recommended Actions as "Detective"
+rows; the one-pager copies cost instead of estimating it; the Red Team runs
+after every other technique; ACH gains a survival test, a weights-match-words
+rule, and a provisional label for untested recommendations; Intelligence Gaps
+are ordered by impact; output never overwrites; quick mode gained scenario Q1.
+
+## Final verification (final wording)
+
+| Check | S2 Investigation (rigorous) | Q1 Decision (quick) |
+|---|---|---|
+| 1–3, 5, 8 | PASS | PASS |
+| 4 Findings free of interpretation | PASS | N/A |
+| 6 Checkpoint behavior | PASS — stopped | PASS — did not stop |
+| 7 One-pager adds nothing | PASS | N/A (reader `self`, no tailored file) |
+| Scenario-specific | PASS — unit mismatch found, reproduced locally; DNS rejected on timing | PASS — quick mode, Working Notes present |
+| Risk adjectives / estimated % | PASS | PASS |
+| ACH survival test, weights, provisional label | PASS | PASS — "no clear winner", provisional choice with reversing test named |
+| Detective rows; Red Team last | PASS | N/A |
+| Evidence Log: inferences / derived grades | FAIL-minor — one derived row graded A1, lowest input A2 | PASS |
+
+## Known residuals
+
+- Derived-grade arithmetic (lowest-input rule) is occasionally misapplied by
+  one step. The rule is stated; this is an execution slip, not a wording gap.
+- P2 (contradictory evidence) was not re-run after the final wording. Its
+  remaining round-3 failures map to rules added in the branch-review fixes,
+  which S2 and Q1 exercised (survival test, weights, provisional label).
+- Recommendations on close decisions vary between runs (P2 chose Postgres in
+  rounds 1 and 3, DynamoDB in round 2). Every run rated the deciding judgment
+  near *roughly even chance* with low confidence, which is the honest output
+  for that evidence.
+- Scenario runs used sonnet subagents. Behavior on other models is untested.
