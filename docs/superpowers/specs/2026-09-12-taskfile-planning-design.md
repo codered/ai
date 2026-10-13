@@ -248,9 +248,10 @@ each task's work separately, and no work is lost.
 | Item | Value |
 |---|---|
 | Base branch | The branch checked out when the run starts |
-| Integration branch | `taskfile/<plan-name>`, created from the base branch on the first run and reused on later runs |
-| Task branch | `taskfile/<plan-name>/<task-id>` |
-| Task worktree | `<WORKTREES>/<plan-name>/<task-id>` |
+| Integration branch | `taskfile/<plan-name>/integration`, created from the base branch on the first run and reused on later runs |
+| Integration worktree | `<WORKTREES>/<plan-name>/integration`. The orchestrator merges, verifies, and resets here. |
+| Task branch | `taskfile/<plan-name>/tasks/<task-id>` |
+| Task worktree | `<WORKTREES>/<plan-name>/tasks/<task-id>` |
 | Taskfile | Stays in the main working tree. The orchestrator edits it there and does not commit STATUS changes. |
 
 - The orchestrator creates worktrees with `git worktree add`. It does not use a harness
@@ -324,3 +325,14 @@ the file.
 - Worktree model: a scenario run in a scratch repository with two parallel tasks and one
   dependent task. Check the branch names, one `--no-ff` merge per successful task, that a
   failed task keeps its worktree, and that a deliberate out-of-FILES edit fails the audit.
+
+## Amendments (implementation plan, 2026-10-13)
+
+- Git cannot hold `taskfile/<plan>` and `taskfile/<plan>/<id>` at once, so the branches are
+  `taskfile/<plan>/integration` and `taskfile/<plan>/tasks/<id>`.
+- Merges, post-merge VERIFY, and resets happen in an integration worktree. A reset in the
+  main working tree would discard the Taskfile's uncommitted STATUS lines.
+- The STE word checks skip UPPERCASE words, so `BECAUSE VERIFY failed after merge` is valid.
+- `ste_lint.py --audit TASK_ID` reads changed paths on stdin and prints each path outside
+  FILES. The attribution step uses it.
+- An interrupted task's uncommitted changes are committed before its worktree is removed.
