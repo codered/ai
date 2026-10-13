@@ -101,5 +101,41 @@ class TailoringTest(unittest.TestCase):
         self.assertIn("links to the full product", self.text)
 
 
+HEADER_FIELDS = ["Product:", "Mode:", "Date:", "Analyst:", "Key Question:",
+                 "Readers:", "Decision needed by:", "BLUF:"]
+TAIL_SECTIONS = ["Evidence Log", "Key Assumptions",
+                 "Alternative Views / Red Team", "Intelligence Gaps"]
+TEMPLATE_SECTIONS = {
+    "decision-brief": ["Key Judgments", "Options", "ACH Matrix",
+                       "Recommendation", "Signposts"],
+    "investigation-package": ["Synopsis", "Chronology", "Findings of Fact",
+                              "Analysis", "Conclusions",
+                              "Investigator's Comments", "Recommended Actions"],
+    "risk-assessment": ["Key Judgments", "Threat/Risk Register", "Scenarios",
+                        "Indicators & Warnings", "Mitigations"],
+}
+
+
+class TemplatesTest(unittest.TestCase):
+    def test_full_templates(self):
+        for name, sections in TEMPLATE_SECTIONS.items():
+            text = read(f"templates/{name}.md")
+            for field in HEADER_FIELDS:
+                self.assertIn(field, text, f"{name}: {field}")
+            headings = re.findall(r"^## (?:\d+\. )?(.+)$", text, re.M)
+            self.assertEqual(headings, sections + TAIL_SECTIONS, name)
+
+    def test_evidence_log_columns(self):
+        for name in TEMPLATE_SECTIONS:
+            self.assertRegex(read(f"templates/{name}.md"),
+                             r"\|\s*ID\s*\|\s*Item\s*\|\s*Source\s*\|\s*Grade\s*\|")
+
+    def test_bluf_one_pager(self):
+        text = read("templates/bluf-one-pager.md")
+        self.assertNotIn("Evidence Log", text)
+        self.assertIn("Full product:", text)
+        self.assertIn("BLUF:", text)
+
+
 if __name__ == "__main__":
     unittest.main()
