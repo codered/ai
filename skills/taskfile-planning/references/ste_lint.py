@@ -10,6 +10,49 @@ import argparse
 import re
 import sys
 
+# STE rules: the countable subset of skills/nfc/references/style-rules.md.
+MAX_WORDS = 20
+REPLACE = [  # (rejected forms, approved word)
+    (("ensure", "ensures", "ensured"), "make sure"),
+    (("verify", "verifies", "verified"), "make sure"),
+    (("confirm", "confirms", "confirmed"), "make sure"),
+    (("validate", "validates", "validated"), "make sure"),
+    (("utilize", "utilizes", "utilized", "employ", "employs", "employed"), "use"),
+    (("commence", "commences", "commenced", "initiate", "initiates", "initiated"), "start"),
+    (("terminate", "terminates", "terminated", "cease", "ceases", "ceased"), "stop"),
+    (("endeavour", "endeavor", "attempt", "attempts", "attempted"), "try"),
+    (("accomplish", "accomplishes", "accomplished", "execute", "executes", "executed",
+      "perform", "performs", "performed"), "do"),
+    (("obtain", "obtains", "obtained", "acquire", "acquires", "acquired",
+      "procure", "procures", "procured"), "get"),
+    (("require", "requires", "required", "necessitate", "necessitates"), "need"),
+    (("assist", "assists", "assisted", "aid"), "help"),
+    (("permit", "permits", "permitted"), "let"),
+    (("prior to",), "before"),
+    (("subsequent to", "following"), "after"),
+    (("in order to", "so as to"), "to"),
+    (("in the event that",), "if"),
+    (("at this point in time",), "now"),
+    (("in the vicinity of",), "near"),
+    (("a number of", "numerous"), "many"),
+    (("the majority of",), "most"),
+    (("approximately",), "about"),
+    (("sufficient",), "enough"),
+    (("additional",), "more"),
+    (("initial",), "first"),
+    (("is able to", "has the ability to"), "can"),
+    (("it is necessary that you",), "you must"),
+    (("it is recommended that",), "we recommend that you"),
+    (("there is a possibility that",), "possibly"),
+    (("due to the fact that",), "because"),
+    (("in spite of the fact that",), "although"),
+]
+DELETE = ("basically", "essentially", "actually", "really", "very", "quite", "simply",
+          "just", "obviously", "clearly", "of course", "needless to say",
+          "it should be noted that", "as you may know", "at the end of the day")
+GERUND_OK = {"bring", "string", "spring", "thing", "nothing", "something", "anything",
+             "everything", "during", "morning", "evening", "ceiling"}
+
 CODES = {
     "S001": "PLAN must be the first directive and appear once",
     "S002": "unknown keyword",
@@ -40,6 +83,10 @@ CODES = {
     "X003": "BY must go with blocked, and only with it",
     "X004": "BY names a task that is not a failed or blocked dependency",
     "X005": "task started or finished before a dependency succeeded",
+    "T001": "sentence has more than 20 words",
+    "T002": "rejected word; use the approved word",
+    "T003": "word that adds no meaning",
+    "T004": "sentence starts with an -ing word",
 }
 
 ID_RE = re.compile(r"[a-z][a-z0-9-]*\Z")
@@ -544,7 +591,53 @@ def check_status(model):
                                       f"is {state(by_id[dep])}")
 
 
-SEMANTIC_CHECKS = [check_graph, check_permissions, check_flow, check_status]
+def prose(model):
+    """Yield (line, text) for every GOAL, STEP, RULE, and BECAUSE text."""
+    for text, line in model.global_block.rules:
+        yield line, text
+    for t in model.tasks:
+        yield t.goal[1], t.goal[0]
+        for text, line in t.steps:
+            yield line, text
+        for _, reason, line in t.skips:
+            yield line, reason
+        if t.status and t.status["because"]:
+            yield t.status["line"], t.status["because"]
+
+
+def ste_problems(text):
+    """Return (code, message) pairs for the countable STE rules."""
+    clean = re.sub(r'"[^"]*"|`[^`]*`|\$\{[^}]*\}', "X", text)
+    problems = []
+    for sentence in re.split(r"(?<=[.!?])\s+", clean.strip()):
+        words = sentence.split()
+        if not words:
+            continue
+        if len(words) > MAX_WORDS:
+            problems.append(("T001", f"sentence has {len(words)} words; the limit is {MAX_WORDS}"))
+        first = words[0].strip(".,;:!?").lower()
+        if first.endswith("ing") and len(first) > 4 and first not in GERUND_OK:
+            problems.append(("T004", f'sentence starts with "{words[0]}"; start with a verb'))
+    # Uppercase words are directive names or acronyms, such as VERIFY or FILES.
+    lowered = " ".join(re.sub(r"\b[A-Z][A-Z0-9_]+\b", "X", clean).lower().split())
+    for forms, approved in REPLACE:
+        for form in forms:
+            if re.search(r"\b" + re.escape(form) + r"\b", lowered):
+                problems.append(("T002", f'replace "{form}" with "{approved}"'))
+                break
+    for word in DELETE:
+        if re.search(r"\b" + re.escape(word) + r"\b", lowered):
+            problems.append(("T003", f'delete "{word}"'))
+    return problems
+
+
+def check_ste(model):
+    for line, text in prose(model):
+        for code, message in ste_problems(text):
+            model.err(line, code, message)
+
+
+SEMANTIC_CHECKS = [check_graph, check_permissions, check_flow, check_status, check_ste]
 
 
 def lint(source):

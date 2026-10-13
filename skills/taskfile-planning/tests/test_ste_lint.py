@@ -253,5 +253,42 @@ class StatusTest(LintCase):
         self.assertEqual((code, out), (0, ""))
 
 
+class SteTest(LintCase):
+    def test_t001_long_sentence(self):
+        self.assert_fixture("t001-long-sentence.ste", ["14: T001 sentence has 21 words; the limit is 20"])
+
+    def test_t002_rejected_word(self):
+        self.assert_fixture("t002-rejected-word.ste", ['14: T002 replace "ensure" with "make sure"'])
+
+    def test_t003_filler_word(self):
+        self.assert_fixture("t003-filler-word.ste", ['14: T003 delete "just"'])
+
+    def test_t004_leading_gerund(self):
+        self.assert_fixture("t004-leading-gerund.ste",
+                            ['13: T004 sentence starts with "Adding"; start with a verb'])
+
+    def test_quoted_text_and_placeholders_are_not_checked(self):
+        problems = ste_lint.ste_problems('Add the label "Just ensure it works" and use `verify_all`.')
+        self.assertEqual(problems, [])
+
+    def test_placeholder_counts_as_one_word(self):
+        text = "Write " + " ".join(["word"] * 18) + " ${schema.table}."
+        self.assertEqual(ste_lint.ste_problems(text), [])
+
+    def test_allowed_ing_words(self):
+        self.assertEqual(ste_lint.ste_problems("Bring the server up. String the values together."), [])
+
+    def test_orchestrator_reasons_pass(self):
+        for reason in ("changed files outside FILES", "VERIFY failed after merge",
+                       "merge conflict", "context limit"):
+            self.assertEqual(ste_lint.ste_problems(reason), [], reason)
+        self.assertEqual(ste_lint.ste_problems("Verify the output."),
+                         [("T002", 'replace "verify" with "make sure"')])
+
+    def test_each_sentence_is_counted_alone(self):
+        text = " ".join(["word"] * 15) + ". " + " ".join(["word"] * 15) + "."
+        self.assertEqual(ste_lint.ste_problems(text), [])
+
+
 if __name__ == "__main__":
     unittest.main()
