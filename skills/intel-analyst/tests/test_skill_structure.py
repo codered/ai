@@ -5,6 +5,8 @@ other correctly, and that the fixed content the spec defines is present.
 Run with: python3 -m unittest discover -s skills/intel-analyst/tests -v
 """
 import re
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -135,6 +137,32 @@ class TemplatesTest(unittest.TestCase):
         self.assertNotIn("Evidence Log", text)
         self.assertIn("Full product:", text)
         self.assertIn("BLUF:", text)
+
+
+class FixtureTest(unittest.TestCase):
+    """The investigation scenario fixture builds a repo with the planted bug."""
+
+    def test_builds_repo_with_planted_bug(self):
+        script = SKILL_DIR / "tests" / "fixtures" / "make_incident_repo.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "checkout"
+            subprocess.run(["bash", str(script), str(repo)], check=True,
+                           capture_output=True)
+            log = subprocess.run(["git", "-C", str(repo), "log", "--oneline"],
+                                 check=True, capture_output=True, text=True)
+            self.assertEqual(len(log.stdout.splitlines()), 4)
+            payments = (repo / "checkout" / "payments.py").read_text()
+            self.assertIn("timeout_ms=RETRY_TIMEOUT", payments)
+            config = (repo / "checkout" / "config.py").read_text()
+            self.assertIn("RETRY_TIMEOUT = 30  # seconds", config)
+            self.assertIn("dns: slow resolution", (repo / "logs" / "app.log").read_text())
+
+    def test_refuses_non_empty_dir(self):
+        script = SKILL_DIR / "tests" / "fixtures" / "make_incident_repo.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "keep.txt").write_text("x")
+            result = subprocess.run(["bash", str(script), tmp], capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
 
 
 if __name__ == "__main__":
