@@ -336,3 +336,7 @@ the file.
 - `ste_lint.py --audit TASK_ID` reads changed paths on stdin and prints each path outside
   FILES. The attribution step uses it.
 - An interrupted task's uncommitted changes are committed before its worktree is removed.
+- A re-run skips `completed_failure` tasks as well as `completed_success` ones. SKILL.md
+  gives the manual procedure to retry a failed task.
+- The FLOW contract lets a subagent that cannot send messages during its run put its
+  heartbeats in its report.

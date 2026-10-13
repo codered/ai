@@ -75,6 +75,7 @@ Take every name from `LINT <file> --json`. Do not parse the Taskfile yourself.
 | Integration worktree | `<WORKTREES>/<plan>/integration` | `plan.integration_worktree` |
 | Task branch | `taskfile/<plan>/tasks/<id>` | `tasks[].branch` |
 | Task worktree | `<WORKTREES>/<plan>/tasks/<id>` | `tasks[].worktree` |
+| `<WORKTREES>` | `.worktrees` unless the Taskfile sets WORKTREES | `global.worktrees` |
 
 The Taskfile stays in the main working tree. Edit it there. Do not commit STATUS changes.
 Create worktrees with `git worktree add`. Do not use a harness isolation feature that
@@ -95,16 +96,17 @@ picks its own paths or cleans up by itself, because the plan must control the na
      `git worktree add <integration-worktree> <integration-branch>`.
 3. **Reset interrupted tasks.** For each task in `in_progress`:
    - If its worktree exists and `git -C <worktree> status --porcelain` is not empty,
-     commit everything there as `<id>: uncommitted changes at interrupt`.
-   - Run `git worktree remove --force <worktree>`.
-   - Rename the branch: `git branch -m <branch> <branch>-attempt-<n>`. `n` is one more
-     than the number of `<branch>-attempt-*` branches that exist.
+     run `git -C <worktree> add -A` and commit as `<id>: uncommitted changes at interrupt`.
+   - If its worktree exists, run `git worktree remove --force <worktree>`.
+   - If its branch exists, rename it: `git branch -m <branch> <branch>-attempt-<n>`. `n` is
+     one more than the number of `<branch>-attempt-*` branches that exist.
    - Set the task's STATUS to `pending`. The old branch keeps its commits.
 4. **For each wave, in order:**
-   - Skip tasks at `completed_success`.
+   - Skip tasks at `completed_success` or `completed_failure`. A failed task keeps its
+     worktree and branch until the user retries it (see "Retry a failed task").
    - Write `STATUS blocked BY <dep>` on a task whose dependency is `completed_failure` or
-     `blocked`.
-   - For each remaining task, run
+     `blocked`. Never dispatch a blocked task.
+   - For each task that is still `pending`, run
      `git worktree add -b <branch> <worktree> <integration-branch>`.
      Set its STATUS to `in_progress` and save the Taskfile.
    - Dispatch one subagent per task. Never run more than `agents_max` at once. Queue the
@@ -117,8 +119,20 @@ picks its own paths or cleans up by itself, because the plan must control the na
    - After the wave, apply the COMPACT triggers (see "Compaction").
 5. **Finish.** Run `git worktree remove <integration-worktree>`. Print one table row per
    task: id, final STATUS, BY chain, branch, and the worktree path of each failed task.
-   Stop. There are no automatic retries. A re-run skips completed tasks. Never merge the
-   integration branch into the user's branch. The user decides that.
+   Stop. There are no automatic retries. A re-run skips `completed_success` and
+   `completed_failure` tasks. Never merge the integration branch into the user's branch.
+   The user decides that.
+
+### Retry a failed task
+
+Do this only when the user asks to retry a task that is `completed_failure`:
+
+1. If its worktree exists, run `git worktree remove --force <worktree>`. Audit step 1
+   already committed its changes.
+2. Rename its branch to `<branch>-attempt-<n>`, as in step 3.
+3. Delete the STATUS line of that task, and of every task that is `blocked BY` it
+   directly or through a BY chain. Otherwise the linter reports X004.
+4. Run the plan again.
 
 ### Audit and merge
 
@@ -129,14 +143,14 @@ time. Let `INT` be the integration worktree and `WT` the task worktree.
    `git -C WT add -A` and commit as `<id>: uncommitted changes at report`.
 2. **Attribute.** Run
    `git diff --name-only $(git merge-base <integration-branch> <branch>)..<branch> | LINT <file> --audit <id>`.
-   If it exits 1, fail the task `BECAUSE changed files outside FILES`.
+   If it exits non-zero, fail the task `BECAUSE changed files outside FILES`.
 3. **Verify in isolation.** Run each VERIFY command in `WT`. Any non-zero exit fails the
    task. A report that claims success does not override this.
-4. **Merge.** Save `PRE=$(git -C INT rev-parse HEAD)`. Run
+4. **Merge.** Run `git -C INT rev-parse HEAD` and record the commit it prints as `PRE`. Run
    `git -C INT merge --no-ff -m "taskfile(<plan>): merge <id>" <branch>`.
    On a conflict, run `git -C INT merge --abort` and fail the task `BECAUSE merge conflict`.
 5. **Verify after the merge.** Run each VERIFY command in `INT`. If one fails, run
-   `git -C INT reset --hard $PRE` and fail the task `BECAUSE VERIFY failed after merge`.
+   `git -C INT reset --hard <PRE>` and fail the task `BECAUSE VERIFY failed after merge`.
    The task branch stays as it is.
 6. **Clean up.** On success, run `git worktree remove WT` and keep the branch. On failure,
    keep both the worktree and the branch so the user can inspect them.
