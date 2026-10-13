@@ -38,7 +38,7 @@ Taskfile, fix a lint error, or need the exact meaning of a directive.
 | `FILES <glob…>` | TASK | 1..n | Files the task may change |
 | `OUTPUT <key> = <value>` | TASK | 0..n | Value other tasks read as `${id.key}`. Keys are unique per task. |
 | `SKIP <flow-step> BECAUSE <sentence>` | TASK | 0..n | Omit one FLOW step, with a reason |
-| `VERIFY <command…>` | TASK | 1..n | Command that must exit 0 |
+| `VERIFY <command…>` | TASK | 1..n | Command that must exit 0. The PERMIT run check looks at the first word only. Shell chaining (`&&`, `\|`, `;`) is not checked. |
 | `STATUS <state> [BECAUSE <sentence>] [BY <id>]` | TASK | 0..1 | Execution state. Only the orchestrator writes it. |
 
 ## Permissions
@@ -81,6 +81,10 @@ A FLOW step is a TOOL role declared in GLOBAL or one of these built-ins:
 
 `report` always runs last, whether or not FLOW lists it. `verify` and `report` cannot be
 skipped. Compaction is not a FLOW step. Only the orchestrator compacts.
+
+A fresh worktree has no untracked or ignored files (.venv, node_modules, .env). When VERIFY
+needs a setup command, declare `TOOL setup <command>` and put `setup` in FLOW before
+`verify`. The orchestrator runs that command in a worktree before it runs VERIFY there.
 
 ## States
 
@@ -169,8 +173,8 @@ structure is valid.
     python3 ste_lint.py FILE                    # exit 0 valid, 1 errors, 2 usage or IO error
     python3 ste_lint.py FILE --waves            # wave N: id id …
     python3 ste_lint.py FILE --json             # {plan, global, tasks, waves}
-    git diff --name-only A..B | python3 ste_lint.py FILE --audit TASK_ID
-                                                # prints each path outside FILES; exit 1 if any
+    git -c core.quotepath=off diff --no-renames --name-only A..B | python3 ste_lint.py FILE --audit TASK_ID
+                                                # prints each path outside FILES or under a DENY write; exit 1 if any
                                                 # exit 2, errors on stderr: invalid FILE or unknown TASK_ID
 
 `--json` gives each task its `branch`, `worktree`, `depends`, `wave`, `status`, and

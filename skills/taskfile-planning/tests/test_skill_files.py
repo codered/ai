@@ -92,7 +92,7 @@ class SkillDocTest(unittest.TestCase):
 
     def test_failure_reasons_pass_the_linter(self):
         reasons = set(re.findall(r"`[^`\n]*BECAUSE ([A-Za-z ]+)`", self.text))
-        self.assertEqual(reasons, {"changed files outside FILES", "merge conflict",
+        self.assertEqual(reasons, {"changed files outside FILES", "merge conflict", "VERIFY failed",
                                    "VERIFY failed after merge", "context limit"})
         for reason in reasons:
             self.assertEqual(ste_lint.ste_problems(reason), [], reason)

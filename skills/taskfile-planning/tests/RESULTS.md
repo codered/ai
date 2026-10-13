@@ -5,10 +5,8 @@ subagent). Fixture: `fixtures/make_scenario_repo.sh`. Scenario agents were
 sonnet; Mode 2 task subagents were haiku; separate sonnet judges scored the
 runs read-only. Run date: 2026-10-13.
 
-Evidence locations (scratch, not copied into the repository):
-`/tmp/claude-1000/-home-code-development-ai/6706d6b5-43b6-4ca6-8ffa-bb6ebacbb6b7/scratchpad/scenarios/`
-(scratch repositories and logs). Judgements:
-`.superpowers/sdd/2026-10-13-taskfile-planning/task-9-judgements.md`.
+The scratch repositories, logs, and judge notes of these runs were not retained.
+The evidence in the tables below is the record.
 
 ## Fixture check
 

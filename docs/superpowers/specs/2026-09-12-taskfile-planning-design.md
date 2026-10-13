@@ -340,3 +340,16 @@ the file.
   gives the manual procedure to retry a failed task.
 - The FLOW contract lets a subagent that cannot send messages during its run put its
   heartbeats in its report.
+- A dependency is allowed when two tasks must change the same file.
+- `--audit` exits 2 with errors on stderr for an invalid plan or an unknown task.
+- `--audit` also reports paths under DENY write, GLOBAL or the task's own.
+- Blocked tasks are never dispatched.
+- WORKTREES is GLOBAL-only.
+- COMPACT pct is 1..99.
+- The attribution command is rename-safe:
+  `git -c core.quotepath=off diff --no-renames --name-only <merge-base>..<branch>`.
+- A `TOOL setup <command>` role, placed in FLOW before `verify`, prepares a fresh worktree.
+  The orchestrator runs it before VERIFY in a task or integration worktree.
+- On resume, the orchestrator aborts a merge in progress in the integration worktree. For
+  an `in_progress` task whose branch is already an ancestor of the integration branch, it
+  runs VERIFY there instead of resetting the task.

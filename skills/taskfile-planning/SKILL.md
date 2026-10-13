@@ -25,7 +25,7 @@ Mode 2 starts only on an explicit request. Never start it on your own.
   code. Load it before you write or fix a Taskfile.
 - `references/ste_lint.py`: the linter. Standard library only.
 - `references/example.ste`: a valid example.
-- `skills/nfc/references/style-rules.md` (in this repository): the STE rules.
+- The `codered:nfc` skill's style rules: the STE rules.
 
 In the commands below, `LINT` means `python3 <this skill's directory>/references/ste_lint.py`.
 Run every command from the repository root unless a step names a worktree.
@@ -39,7 +39,10 @@ Run every command from the repository root unless a step names a worktree.
    ask for what the repo does not show:
    - permissions, especially `network` and paths outside the repo;
    - `AGENTS max`;
-   - the FLOW order.
+   - the FLOW order;
+   - how the project's environment is set up (.venv, node_modules, .env). A fresh
+     worktree has no untracked or ignored files. If VERIFY needs a setup command, declare
+     `TOOL setup <command>` and put `setup` in FLOW before `verify`.
 2. **Tasks.** Make each task one unit that one subagent can finish and verify inside its
    own context. Add a dependency only when a task uses another task's result, or when two
    tasks must change the same file. Give each task the narrowest FILES.
@@ -89,24 +92,37 @@ picks its own paths or cleans up by itself, because the plan must control the na
 2. **Prepare the workspace.**
    - Run `git status --porcelain`. Every line except the Taskfile must be absent.
      Otherwise stop and name the files.
+   - Run `git symbolic-ref -q HEAD`. If it exits non-zero, HEAD is detached. Stop and ask
+     the user to check out a branch.
    - Run `git check-ignore -q <WORKTREES>/`. If it exits non-zero, stop and tell the user
-     to add `<WORKTREES>/` to `.gitignore`.
+     to add `<WORKTREES>/` to `.gitignore` and commit that change.
    - If the integration branch does not exist, create it from the base branch:
      `git branch <integration-branch> HEAD`.
    - If the integration worktree does not exist, run
-     `git worktree add <integration-worktree> <integration-branch>`.
-3. **Reset interrupted tasks.** For each task in `in_progress`:
-   - If its worktree exists and `git -C <worktree> status --porcelain` is not empty,
-     run `git -C <worktree> add -A` and commit as `<id>: uncommitted changes at interrupt`.
-   - If its worktree exists, run `git worktree remove --force <worktree>`.
-   - If its branch exists, rename it: `git branch -m <branch> <branch>-attempt-<n>`. `n` is
-     one more than the number of `<branch>-attempt-*` branches that exist.
-   - Set the task's STATUS to `pending`. The old branch keeps its commits.
+     `git worktree add <integration-worktree> <integration-branch>`. If it exists, a
+     merge may have been interrupted. If `git -C INT rev-parse -q --verify MERGE_HEAD`
+     succeeds, run `git -C INT merge --abort`. If `git -C INT status --porcelain` is not
+     empty, run `git -C INT reset --hard` and `git -C INT clean -fd`. `INT` is the integration
+     worktree, your own tree, so this is safe.
+3. **Reset interrupted tasks.** For each task in `in_progress`, first run
+   `git merge-base --is-ancestor <branch> <integration-branch>`.
+   - If it succeeds, the merge already happened. Run the `setup` command (see "Audit and
+     merge" step 3), then each VERIFY command, in `INT`. On exit 0, write
+     `completed_success` and remove the task worktree if it exists. Otherwise write
+     `completed_failure BECAUSE VERIFY failed after merge` and tell the user that the
+     merge is on the integration branch.
+   - If it fails, do the following:
+     - If its worktree exists and `git -C <worktree> status --porcelain` is not empty,
+       run `git -C <worktree> add -A` and commit as `<id>: uncommitted changes at interrupt`.
+     - If its worktree exists, run `git worktree remove --force <worktree>`.
+     - If its branch exists, rename it: `git branch -m <branch> <branch>-attempt-<n>`. `n` is
+       one more than the number of `<branch>-attempt-*` branches that exist.
+     - Set the task's STATUS to `pending`. The old branch keeps its commits.
 4. **For each wave, in order:**
    - Skip tasks at `completed_success` or `completed_failure`. A failed task keeps its
      worktree and branch until the user retries it (see "Retry a failed task").
-   - Write `STATUS blocked BY <dep>` on a task whose dependency is `completed_failure` or
-     `blocked`. Never dispatch a blocked task.
+   - As soon as a task's dependency is `completed_failure` or `blocked`, write
+     `STATUS blocked BY <dep>` on it and run `LINT <file>`. Never dispatch a blocked task.
    - Queue each task that is still `pending`. Never run more than `agents_max` subagents
      at once. Start a queued task each time a slot frees.
    - To start a task: run `git worktree add -b <branch> <worktree> <integration-branch>`,
@@ -118,7 +134,10 @@ picks its own paths or cleans up by itself, because the plan must control the na
    - Wait for each subagent's report. Do not audit a task before it reports. For each
      report, do "Audit and merge" below. Then write `STATUS completed_success` or
      `STATUS completed_failure BECAUSE <reason>`, save the Taskfile, and run
-     `LINT <file>`. It must exit 0 before you audit another report.
+     `LINT <file>`. It must exit 0 before you audit another report. The reason is one of
+     `changed files outside FILES`, `VERIFY failed`, `VERIFY failed after merge`,
+     `merge conflict`, or `context limit`. Otherwise use one STE sentence of 20 words or
+     fewer, without " BY ". If lint rejects it, shorten it and lint again.
    - Start the next wave only when every task in this wave has a final STATUS.
    - After the wave, apply the COMPACT triggers (see "Compaction").
 5. **Finish.** Run `git worktree remove <integration-worktree>`. Print one table row per
@@ -147,21 +166,27 @@ time. Let `INT` be the integration worktree and `WT` the task worktree.
 1. **Save everything.** If `git -C WT status --porcelain` is not empty, run
    `git -C WT add -A` and commit as `<id>: uncommitted changes at report`.
 2. **Attribute.** Run
-   `git diff --name-only $(git merge-base <integration-branch> <branch>)..<branch> | LINT <file> --audit <id>`.
+   `git -c core.quotepath=off diff --no-renames --name-only $(git merge-base <integration-branch> <branch>)..<branch> | LINT <file> --audit <id>`.
+   `--no-renames` lists the old path of a moved file too.
    - Exit 0: continue.
-   - Exit 1: it printed the paths outside FILES. Fail the task
+   - Exit 1: it printed the paths outside FILES or under a DENY write. Fail the task
      `BECAUSE changed files outside FILES`.
-   - Exit 2: the Taskfile is invalid, or the task id is unknown. The errors are on
-     stderr. Fix the Taskfile and run the audit again. Never merge before it exits 0.
-3. **Verify in isolation.** Run each VERIFY command in `WT`. Any non-zero exit fails the
-   task. A report that claims success does not override this.
+   - Exit 2: the Taskfile is invalid, or the task id is unknown. Read stderr and fix the
+     cause, then run the audit again. If you cannot fix it, stop the run and report.
+     Never merge before it exits 0.
+3. **Verify in isolation.** If GLOBAL declares `TOOL setup <command>`, run that command
+   in `WT` first. Then run each VERIFY command in `WT`. Any non-zero exit fails the
+   task `BECAUSE VERIFY failed`. A report that claims success does not override this.
 4. **Merge.** Run `git -C INT rev-parse HEAD` and record the commit it prints as `PRE`. Run
    `git -C INT merge --no-ff -m "taskfile(<plan>): merge <id>" <branch>`.
    On a conflict, run `git -C INT merge --abort` and fail the task `BECAUSE merge conflict`.
-5. **Verify after the merge.** Run each VERIFY command in `INT`. If one fails, run
-   `git -C INT reset --hard <PRE>` and fail the task `BECAUSE VERIFY failed after merge`.
-   The task branch stays as it is.
-6. **Clean up.** On success, run `git worktree remove WT` and keep the branch. On failure,
+5. **Verify after the merge.** Run the `setup` command, if any, then each VERIFY command
+   in `INT`. If one fails, run `git -C INT reset --hard <PRE>` and fail the task
+   `BECAUSE VERIFY failed after merge`. The task branch stays as it is. If all pass, run
+   `git -C INT reset --hard` and `git -C INT clean -fd` to remove VERIFY artifacts.
+   `clean -fd` keeps ignored files such as a setup `.venv`.
+6. **Clean up.** On success, run `git worktree remove --force WT` and keep the branch.
+   Step 1 committed the task's changes, so `--force` drops only VERIFY artifacts. On failure,
    keep both the worktree and the branch so the user can inspect them.
 
 You own the integration branch, so step 5 can reset it. Never reset the base branch or a
@@ -202,7 +227,7 @@ Relay each heartbeat to the user in one line. Never write heartbeats to the Task
 | Invalid file | Mode 2 refuses to start and prints the lint errors |
 | Subagent failure | The task becomes `completed_failure`; dependents become `blocked BY` it; independent tasks continue |
 | False success report | The VERIFY check in step 3 fails the task |
-| Changes outside FILES | `completed_failure BECAUSE changed files outside FILES` |
+| Changes outside FILES or under DENY write | `completed_failure BECAUSE changed files outside FILES` |
 | Audit exits 2 | The Taskfile is invalid. Fix it and audit again. Never merge first |
 | Uncommitted changes | The orchestrator commits them on the task branch, then audits |
 | VERIFY fails after the merge | The integration branch resets to `PRE`; `completed_failure BECAUSE VERIFY failed after merge` |
