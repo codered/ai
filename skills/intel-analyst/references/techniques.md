@@ -15,6 +15,11 @@ Primer: Structured Analytic Techniques for Improving Intelligence Analysis*
 | What If? Analysis | — | Optional, when a key assumption is *unsupported* |
 | Red Team | Three inline counter-arguments | `codered:devils-advocate` |
 
+Every template heading stays in every mode. When a technique does not run, its
+template section gets one line: "Not run (quick mode)." plus any best-effort
+note. Example: a quick risk assessment keeps "Indicators & Warnings" and the
+high-impact/low-probability scenario line.
+
 ## Analysis of Competing Hypotheses
 
 **Use for:** every investigation (cause hypotheses), every decision (options as
@@ -42,7 +47,19 @@ one with the most consistent items.
    Before ranking, count the diagnostic rows (C or I) for each hypothesis. A
    hypothesis with far fewer diagnostic rows than the others is *untested*,
    not winning: collect evidence on it, or mark it "insufficiently tested" in
-   the matrix and do not rank it first.
+   the matrix and do not rank it first. If you still recommend an untested
+   option for other reasons, the Recommendation must say the choice is
+   provisional and name the test that would confirm or reject it.
+
+   **Weights must match the words.** If a Key Judgment says one source was
+   weighted more than another, its matrix row carries a higher weight. If the
+   rows carry equal weight, the judgment says they were weighted equally.
+
+   **Survival test.** A hypothesis survives only if no A- or B-graded item is
+   inconsistent with it. If no hypothesis survives, or the top two differ by
+   less than one weighted inconsistency, report "cause undetermined" (or "no
+   clear winner" for options) with the closest hypotheses and the evidence
+   that would separate them.
 6. Check sensitivity: which few evidence items decide the ranking? If one of
    them is wrong or misread, would the ranking change? Name them.
 7. Report every hypothesis, not just the winner, and say why each loser lost.
@@ -80,7 +97,10 @@ mark, and its basis.
 ## Indicators / Signposts
 
 **Use for:** decision briefs (Signposts) and risk assessments
-(Indicators & Warnings); investigations when the cause can recur.
+(Indicators & Warnings); investigations when the cause can recur. An
+investigation package has no Indicators section: write each indicator as a
+row in Recommended Actions with Type "Detective" (for example, "alert when
+charge timeouts exceed 1% for 5 minutes").
 
 **Procedure:**
 

@@ -10,7 +10,7 @@ and are never reused or renumbered.
 
 | ID | Item | Source | Grade |
 |---|---|---|---|
-| E1 | `RETRY_TIMEOUT` read as milliseconds after refactor | `src/config.py:14` @ `a1b2c3d` | A1 |
+| E1 | `charge()` passes `timeout_ms=RETRY_TIMEOUT` to `post()` | `checkout/payments.py:11` @ `a1b2c3d` | A2 |
 | E2 | Checkout 5xx rate rose from 0.1% to 12% at 14:02 UTC | Grafana `checkout-errors`, query `sum(rate(http_5xx[5m]))` | A2 |
 
 **Item** is one fact or one claim, in one sentence. **Source** must let a reader

@@ -12,7 +12,9 @@ ICD 208, *Maximizing the Utility of Analytic Products*.
 | `self` | The user, thinking through a problem | Full product plus a Working Notes appendix | `docs/intel/YYYY-MM-DD-<slug>.md` |
 
 The full product is always written. A tailored file is written only for a
-profile other than `engineers` and `self`.
+profile other than `engineers` and `self`. When `self` is among the readers,
+the full product gets the Working Notes appendix, even if `engineers` is also
+listed.
 
 **Working Notes appendix (`self`):** rejected hypotheses and why, raw ACH
 scoring before weighting, evidence that was collected but not used, and open
@@ -32,5 +34,7 @@ leads. Add it as a final `## Working Notes` section.
 5. Every tailored version links to the full product with a relative link:
    `Full product: [<title>](./YYYY-MM-DD-<slug>.md)`.
 6. Write for the reader's decision. For `leadership`: what to decide, by when,
-   what it costs, and what could go wrong. Leave out the mechanism unless it
+   what it costs, and what could go wrong — each copied from the full product.
+   If the full product states no cost, write "not estimated in the full
+   product"; do not estimate one in the tailored version. Leave out the mechanism unless it
    changes the decision.

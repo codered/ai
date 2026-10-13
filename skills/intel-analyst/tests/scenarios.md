@@ -40,6 +40,11 @@ Postgres was cheaper for us last year." Neither source is provided in full.
 one maintainer, 40 GitHub stars) for our job runner? All I have is a Reddit
 thread and the README."
 
+**Q1 — Quick mode.** In an existing repo: "Quick one, just for me: should
+our internal CLI use `argparse` or `click`? Easy to change later." Expected:
+quick mode (low stakes, reversible, `self` reader), no checkpoint, every
+template heading present.
+
 ## Pass criteria (from the spec)
 
 1. Judgments use only the seven scale terms; no banned hedge words ("may",
@@ -64,5 +69,8 @@ Scenario-specific:
 - **P2:** both claims are logged and graded; the conflict appears in ACH; the
   judgment says which was weighted more and why.
 - **P3:** confidence is capped at low and the BLUF says so.
+- **Q1:** classified quick; did not stop for a checkpoint; sections whose
+  technique did not run say "Not run (quick mode)."; no tailored file (reader
+  is `self`), and the Working Notes appendix is present.
 
 Criteria that do not apply to a scenario (for example 4 for S1) are scored N/A.

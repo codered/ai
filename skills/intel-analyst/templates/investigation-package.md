@@ -1,6 +1,6 @@
 # <Title: what happened, where, when>
 
-**Product:** Investigation Package · **Mode:** Rigorous · **Date:** YYYY-MM-DD · **Analyst:** Claude (+ <user>)
+**Product:** Investigation Package · **Mode:** <Rigorous | Quick (user override)> · **Date:** YYYY-MM-DD · **Analyst:** Claude (+ <user>)
 **Key Question:** <one sentence — usually "what caused X?">
 **Readers:** <profiles: leadership, engineers, self> · **Decision needed by:** <date or n/a>
 
@@ -51,9 +51,11 @@ undetermined, say so here.>
 
 ## 7. Recommended Actions
 
+<!-- Detective rows carry the indicators that would show the cause recurring. -->
+
 | # | Action | Type | Owner | Addresses |
 |---|---|---|---|---|
-| 1 | <action> | Corrective / Preventive | <owner> | Conclusion 1 |
+| 1 | <action> | Corrective / Preventive / Detective | <owner> | Conclusion 1 |
 
 ## Evidence Log
 
@@ -70,5 +72,7 @@ undetermined, say so here.>
 <!-- Red Team summary from devils-advocate (or inline fallback) and what changed as a result. -->
 
 ## Intelligence Gaps
+
+<!-- Ordered by how much each gap would change the answer, largest first. -->
 
 - <unknown> — <how to collect it> — <would it change the conclusion?>

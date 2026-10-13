@@ -48,7 +48,7 @@ checkpoint before writing judgments. The coordinator replied as the user.
 | 4 Facts free of interpretation | N/A | PASS | PASS | FAIL-minor | N/A | N/A |
 | 5 ACH, two or more options | PASS | PASS | PASS | PASS | PASS | PASS |
 | 6 Checkpoint | PASS | PASS | PASS | PASS | PASS | PASS |
-| 7 BLUF adds no judgment | PASS | PASS | FAIL | PASS | PASS | FAIL-minor |
+| 7 One-pager has no judgment absent from full product | PASS | PASS | FAIL | PASS | PASS | FAIL-minor |
 | 8 Output path | PASS | PASS | PASS | PASS | PASS | PASS |
 | Scenario-specific | N/A | PASS | N/A | PASS | FAIL | PASS |
 
@@ -76,3 +76,32 @@ No banned hedge words appeared in any Key Judgment, Conclusion, or BLUF.
 | Inferences in Evidence Logs and Findings (S2, P1, P2, P3) | `sourcing.md`: observation / derived / inference rules and signal words. The derived-items rule was added mid-round, after these runs had loaded the skill. |
 | Judgments cited only "not collected" rows (S3, P3) | `sourcing.md` rule 6 |
 | Runs treated "the skill loaded its method" as a fallback | `SKILL.md` and `techniques.md`: applying the loaded method is the integration. Fallback means the skill is not installed. |
+
+## REFACTOR round 2 (S3 and P2 re-run)
+
+Re-ran the two scenarios with the most round-1 failures against the revised
+skill. The checkpoint was pre-approved (verified in round 1), so criterion 6
+is N/A.
+
+| Check | S3 | P2 |
+|---|---|---|
+| 1–3, 5, 8 | PASS | PASS |
+| Risk-level adjectives or estimated % in judgments | PASS (fixed) | PASS |
+| BLUF judgment matches Key Judgment | PASS (fixed) | FAIL-minor — "cost about the same" stronger than KJ2 |
+| Key Judgment rests only on gap rows | PASS (fixed) | PASS |
+| ACH ranks an untested option first | PASS | PASS (fixed — option marked "untested") |
+| Conflict weighting stated with grades | N/A | FAIL — conflicting cost rows dropped from ACH as non-discriminating |
+| Inferences in Evidence Log | FAIL-minor | FAIL-minor |
+
+**Cause of the P2 failure:** ACH step 4 told the analyst to drop rows that do
+not discriminate between options, which removed both conflicting sources
+before the conflict rule applied. The skill contradicted itself.
+
+**Fixes:** ACH step 4 now keeps conflicting rows side by side; the weighting
+sentence must appear in the affected Key Judgment; the BLUF and tailored
+versions may not add estimates, quantities, or comparisons.
+
+**Variation note:** round 1 P2 recommended Postgres; round 2 recommended
+DynamoDB. Both rated the overall-fit judgment at or near *roughly even chance*
+with low confidence, so the products agree that the evidence does not decide
+the question.

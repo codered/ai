@@ -10,10 +10,12 @@
 2. <…>
 3. <…>
 
-**Action needed:** <the decision or action, who takes it, by when, what it costs>
+**Action needed:** <the decision or action, who takes it, by when. Cost: copy
+it from the full product; if the full product states none, write "not estimated
+in the full product".>
 
-**Confidence and gaps:** <one line — overall confidence and the gap that
-would change the answer most>
+**Confidence and gaps:** <one line — overall confidence and the first gap
+listed in the full product's Intelligence Gaps>
 
 Full product: [<title>](./YYYY-MM-DD-<slug>.md)
 

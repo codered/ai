@@ -64,4 +64,6 @@ references/analytic-standards.md.>
 
 ## Intelligence Gaps
 
+<!-- Ordered by how much each gap would change the answer, largest first. -->
+
 - <unknown> — <how to collect it> — <would it change the assessment?>

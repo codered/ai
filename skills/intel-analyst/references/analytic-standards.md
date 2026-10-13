@@ -35,8 +35,8 @@ probability words, and do not invent intermediate terms.
 | almost certain | 95–99% |
 
 A number may be added in parentheses only when it comes from a count or a
-calculation in the Evidence Log, for example "likely (7 of 10 reproduced runs,
-E9)". Do not add an estimated percentage ("about 60%"): the scale term already
+calculation in the Evidence Log. Put it after the confidence, separated by a
+semicolon: "likely (moderate confidence; 7 of 10 reproduced runs, E9)". Do not add an estimated percentage ("about 60%"): the scale term already
 states the range. Never state 0% or 100%: a certain fact is a Finding of Fact,
 not a judgment.
 

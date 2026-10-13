@@ -28,6 +28,12 @@ def read(rel_path):
     return (SKILL_DIR / rel_path).read_text(encoding="utf-8")
 
 
+def flat(rel_path):
+    """File text with every run of whitespace collapsed to one space, so
+    phrase checks do not depend on where lines wrap."""
+    return " ".join(read(rel_path).split())
+
+
 class AnalyticStandardsTest(unittest.TestCase):
     def setUp(self):
         self.text = read("references/analytic-standards.md")
@@ -76,7 +82,7 @@ class SourcingTest(unittest.TestCase):
         self.assertIn("never as the only support", self.text)
 
     def test_conflict_rule_lands_in_key_judgment(self):
-        self.assertIn("Put this sentence in the\n   Key Judgment", self.text)
+        self.assertIn("Put this sentence in the Key Judgment", flat("references/sourcing.md"))
 
     def test_derived_items_rule(self):
         self.assertIn("`derived from E1, E3`", self.text)
@@ -97,7 +103,21 @@ class TechniquesTest(unittest.TestCase):
         self.assertIn("codered:devils-advocate", self.text)
 
     def test_ach_keeps_conflicting_rows(self):
-        self.assertIn("when two sources\n   conflict, keep both rows", self.text)
+        self.assertIn("when two sources conflict, keep both rows", flat("references/techniques.md"))
+
+    def test_ach_survival_and_weight_rules(self):
+        text = flat("references/techniques.md")
+        self.assertIn("Survival test.", text)
+        self.assertIn("Weights must match the words.", text)
+        self.assertIn("the Recommendation must say the choice is provisional", text)
+
+    def test_every_mode_keeps_template_headings(self):
+        self.assertIn("Not run (quick mode).", flat("references/techniques.md"))
+        self.assertIn("Not run (quick mode).", flat("SKILL.md"))
+
+    def test_investigation_indicators_have_a_home(self):
+        self.assertIn('Type "Detective"', flat("references/techniques.md"))
+        self.assertIn("Detective", read("templates/investigation-package.md"))
 
     def test_ach_seeks_disconfirmation(self):
         self.assertIn("inconsistent", self.text.lower())
@@ -185,8 +205,10 @@ class FixtureTest(unittest.TestCase):
         script = SKILL_DIR / "tests" / "fixtures" / "make_incident_repo.sh"
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "keep.txt").write_text("x")
-            result = subprocess.run(["bash", str(script), tmp], capture_output=True)
+            result = subprocess.run(["bash", str(script), tmp],
+                                    capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
+            self.assertIn("is not empty", result.stderr)
 
 
 class SkillFileTest(unittest.TestCase):
@@ -200,6 +222,13 @@ class SkillFileTest(unittest.TestCase):
     def test_length(self):
         n = len(self.text.splitlines())
         self.assertTrue(150 <= n <= 250, n)
+
+    def test_red_team_runs_last(self):
+        text = flat("SKILL.md")
+        self.assertLess(text.index("Run the other techniques"), text.index("**Red Team** — last"))
+
+    def test_never_overwrite(self):
+        self.assertIn("Never overwrite a file.", flat("SKILL.md"))
 
     def test_every_linked_file_exists(self):
         links = set(re.findall(r"`((?:references|templates)/[\w-]+\.md)`", self.text))

@@ -18,14 +18,18 @@ if [ -n "$(ls -A .)" ]; then
   exit 1
 fi
 
-g() { git -c user.name=fixture -c user.email=fixture@example.invalid "$@"; }
+g() {
+  git -c user.name=fixture -c user.email=fixture@example.invalid \
+      -c commit.gpgsign=false "$@"
+}
 commit() {
   local when="$1" msg="$2"
   g add -A
   GIT_AUTHOR_DATE="$when" GIT_COMMITTER_DATE="$when" g commit -q -m "$msg"
 }
 
-git init -q -b main
+git init -q
+git symbolic-ref HEAD refs/heads/main  # portable to git < 2.28 (no init -b)
 
 mkdir -p checkout
 cat > checkout/payments.py <<'EOF'

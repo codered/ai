@@ -68,7 +68,9 @@ Establish four things. Skip any the prompt already answers.
 
 Ask at most four questions in rigorous mode and at most one in quick mode. If
 the question is still vague, restate it as a precise Key Question and confirm
-it once before collecting.
+it once before collecting. If the answers change the mode (for example, a
+`leadership` reader appears), restate the classification line before
+collecting.
 
 ### 2. Collection
 
@@ -96,11 +98,13 @@ replies. In quick mode, skip this step.
 Load `references/techniques.md` and `references/analytic-standards.md`.
 
 1. Run ACH: build the matrix, look for disconfirming evidence, rank by fewest
-   inconsistent items.
+   inconsistent items, and apply the survival test in `references/techniques.md`.
 2. Run a Key Assumptions Check.
-3. Draft judgments using only the seven scale terms, each with a separate
+3. Run the other techniques the mode table in `references/techniques.md`
+   requires (What If?, High-Impact/Low-Probability, Indicators/Signposts).
+4. Draft judgments using only the seven scale terms, each with a separate
    confidence level and cited E-IDs.
-4. **Red Team.** Rigorous mode: invoke `codered:devils-advocate` with the draft
+5. **Red Team** — last, so nothing after it changes a judgment. Rigorous mode: invoke `codered:devils-advocate` with the draft
    judgments, all hypotheses or options, the Evidence Log, and the Key
    Assumptions. Invoking it loads its method; apply that method to the draft
    as a separate pass and write its structured findings. That is the
@@ -108,13 +112,12 @@ Load `references/techniques.md` and `references/analytic-standards.md`.
    `references/techniques.md` describes. Quick mode, or fallback when the
    skill is not installed: write the three strongest counter-arguments inline
    and state the fallback.
-5. Run the remaining techniques the mode table in `references/techniques.md`
-   requires (Indicators/Signposts, High-Impact/Low-Probability, What If?).
 
 ### 6. Dissemination
 
 1. Fill the product template. Keep its section order and headings.
-2. Run the nine-item checklist in `references/analytic-standards.md`. Fix every "no".
+2. Run the nine-item checklist in `references/analytic-standards.md`. Fix
+   every "no", or record why it cannot be fixed in Intelligence Gaps.
 3. Pass the prose — BLUF, Key Judgments, Conclusions, narrative paragraphs —
    through `codered:nfc` in `clear` mode. Do not rewrite tables, logs, or
    matrices. Do not change any scale term, confidence level, or E-ID.
@@ -139,6 +142,8 @@ Same cycle, compressed:
 - abbreviated ACH (options × top three to five evidence items)
 - Red Team as three inline counter-arguments
 - Key Assumptions Check limited to the top three
+- every template heading stays; a section whose technique does not run in
+  quick mode gets one line: "Not run (quick mode)." plus any best-effort note
 
 Quick mode does not lower the standards: scale terms, separate confidence,
 E-ID citations, and the Evidence Log are still required.
@@ -152,7 +157,8 @@ E-ID citations, and the Evidence Log are still required.
 - `<slug>`: three to six lowercase words joined by hyphens, from the Key Question.
 - If `docs/intel/` does not exist, create it.
 - If the working directory is not inside a git repository, ask the user for an output path before writing.
-- If a product on the same topic already exists in `docs/intel/`, read it and say in the new product whether the judgments changed and why.
+- Never overwrite a file. If the path exists, append `-2`, `-3`, … to the slug.
+- If a product on the same topic (same slug or same Key Question) already exists in `docs/intel/`, read it and say in the new product whether the judgments changed and why.
 
 ---
 
@@ -160,9 +166,9 @@ E-ID citations, and the Evidence Log are still required.
 
 | Situation | Do this |
 |---|---|
-| Thin evidence (fewer than three items, or all graded D–F) | Proceed. Cap confidence at low. Say so in the BLUF. Fill Intelligence Gaps with collection actions. |
+| Thin evidence (fewer than three observed or derived items, or all graded D–F) | Proceed. Cap confidence at low. Say so in the BLUF. Fill Intelligence Gaps with collection actions. |
 | Conflicting sources | Log both. Show the conflict in ACH. Say in the judgment which source was weighted more, and why. |
-| No hypothesis survives ACH | Report "cause undetermined" with the closest hypotheses and the evidence that would separate them. Never invent a conclusion. |
+| No hypothesis survives ACH (survival test in `references/techniques.md`) | Report "cause undetermined" with the closest hypotheses and the evidence that would separate them. Never invent a conclusion. |
 | Source unreachable | Log "not collected: <reason>". List it under Intelligence Gaps. Continue. |
 | Sensitive data in evidence | Redact it. Cite the location, not the content. |
 | `codered:devils-advocate` or `codered:nfc` unavailable | Use the inline fallback described above. Note the fallback in the product. |

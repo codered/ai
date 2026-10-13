@@ -68,4 +68,6 @@ Choose **<option>**. It is *<term>* (<confidence> confidence) that it meets
 
 ## Intelligence Gaps
 
+<!-- Ordered by how much each gap would change the answer, largest first. -->
+
 - <unknown> — <how to collect it> — <would it change the recommendation?>
