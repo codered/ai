@@ -22,7 +22,7 @@ undetermined, say so here.>
 
 ## 3. Findings of Fact
 
-<!-- Observed facts only. No interpretation, no "because", no "probably". Each finding cites E-IDs. -->
+<!-- Observed facts only. No interpretation: no "so", "because", "probably", "which means". Each finding cites E-IDs. -->
 
 1. <observed fact>. [E2]
 2. …

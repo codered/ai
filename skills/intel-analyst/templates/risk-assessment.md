@@ -4,8 +4,10 @@
 **Key Question:** <one sentence — what could go wrong, and how much it matters>
 **Readers:** <profiles: leadership, engineers, self> · **Decision needed by:** <date or n/a>
 
-**BLUF:** <2–3 sentences: the overall risk level, the top risk with its
-likelihood (scale term) and confidence, and the most valuable mitigation.>
+**BLUF:** <2–3 sentences: the top risk with its likelihood (scale term),
+impact, and confidence; and the most valuable mitigation. Every judgment here
+is also a Key Judgment. No risk-level adjectives ("moderate risk") — see
+references/analytic-standards.md.>
 
 ## 1. Key Judgments
 

@@ -44,6 +44,11 @@ class AnalyticStandardsTest(unittest.TestCase):
         for word in BANNED:
             self.assertIn(f'"{word}"', self.text)
 
+    def test_bluf_rules(self):
+        self.assertIn("The BLUF contains no judgment of its own", self.text)
+        self.assertIn("Risk-level adjectives", self.text)
+        self.assertIn('Do not add an estimated percentage', self.text)
+
     def test_nine_standards_checklist(self):
         self.assertEqual(len(re.findall(r"^- \[ \] ", self.text, re.M)), 9)
 
@@ -65,6 +70,14 @@ class SourcingTest(unittest.TestCase):
 
     def test_high_confidence_rule(self):
         self.assertIn("two independent sources", self.text)
+
+    def test_conflict_and_support_rules(self):
+        self.assertIn('"Neither was weighted heavily" does not meet this rule', self.text)
+        self.assertIn("never as the only support", self.text)
+
+    def test_derived_items_rule(self):
+        self.assertIn("`derived from E1, E3`", self.text)
+        self.assertIn("Not an Evidence Log item", self.text)
 
 
 class TechniquesTest(unittest.TestCase):
@@ -132,6 +145,11 @@ class TemplatesTest(unittest.TestCase):
             self.assertRegex(read(f"templates/{name}.md"),
                              r"\|\s*ID\s*\|\s*Item\s*\|\s*Source\s*\|\s*Grade\s*\|")
 
+    def test_risk_bluf_forbids_risk_levels(self):
+        text = read("templates/risk-assessment.md")
+        self.assertNotIn("overall risk level", text)
+        self.assertIn("No risk-level adjectives", text)
+
     def test_bluf_one_pager(self):
         text = read("templates/bluf-one-pager.md")
         self.assertNotIn("Evidence Log", text)
@@ -163,6 +181,36 @@ class FixtureTest(unittest.TestCase):
             (Path(tmp) / "keep.txt").write_text("x")
             result = subprocess.run(["bash", str(script), tmp], capture_output=True)
             self.assertNotEqual(result.returncode, 0)
+
+
+class SkillFileTest(unittest.TestCase):
+    def setUp(self):
+        self.text = read("SKILL.md")
+
+    def test_frontmatter(self):
+        self.assertTrue(self.text.startswith("---\nname: intel-analyst\n"))
+        self.assertRegex(self.text, r"\ndescription: ")
+
+    def test_length(self):
+        n = len(self.text.splitlines())
+        self.assertTrue(150 <= n <= 250, n)
+
+    def test_every_linked_file_exists(self):
+        links = set(re.findall(r"`((?:references|templates)/[\w-]+\.md)`", self.text))
+        self.assertEqual(len(links), 8)
+        for rel in links:
+            self.assertTrue((SKILL_DIR / rel).is_file(), rel)
+
+    def test_integrations_and_fallbacks(self):
+        for s in ("codered:devils-advocate", "codered:nfc", "fallback"):
+            self.assertIn(s, self.text)
+
+    def test_output_rules(self):
+        self.assertIn("docs/intel/YYYY-MM-DD-<slug>.md", self.text)
+        self.assertIn("not inside a git repository", self.text)
+
+    def test_checkpoint_is_a_stop(self):
+        self.assertRegex(self.text, r"(?i)checkpoint.*\n(?:.*\n){0,6}.*\bSTOP\b")
 
 
 if __name__ == "__main__":

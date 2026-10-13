@@ -24,6 +24,28 @@ find the exact evidence again:
 
 "The docs" or "the logs" is not a source.
 
+## Observations, derivations, and inferences
+
+The Evidence Log holds what was observed, plus calculations made directly
+from it. It does not hold conclusions.
+
+- **Observation** — read from a source. Graded normally.
+- **Derived** — a calculation or code trace that follows mechanically from
+  logged items ("30 passed as milliseconds is a 0.03 s timeout"). Source:
+  `derived from E1, E3`. Grade: the lowest reliability and credibility of its
+  inputs. Prefix the item with "Derived:".
+- **Inference** — an explanation, a "because", or a judgment about what the
+  evidence means. Not an Evidence Log item. It belongs in Analysis, Key
+  Judgments, or Conclusions, where it cites the E-IDs it rests on.
+
+Test: if two careful analysts would always get the same result from the
+inputs, it is derived. If they might disagree, it is an inference.
+
+Signal words: "so", "which suggests", "probably", "because", "would not
+allow", "means that". An Evidence Log item or a Finding of Fact that contains
+one is usually an inference. Split it: log the observation, move the
+inference to Analysis.
+
 ## Source reliability (A–F)
 
 Grade the source, not the claim.
@@ -62,7 +84,14 @@ Write the grade as one token: `B2`, `D3`, `A1`.
 4. High confidence requires at least two independent sources graded A–B / 1–2.
    Two items from the same source (two lines of the same log) count as one.
 5. When sources conflict, log both. Record the conflict in the ACH matrix and
-   say in the judgment which source was weighted more, and why.
+   say in the judgment which source was weighted more, and why, naming the
+   grades: "The colleague's benchmark (C3) was weighted over the vendor blog
+   (E3) because …". "Neither was weighted heavily" does not meet this rule;
+   if they are weighted equally, say so and say why. ACH weights must follow
+   the grades.
+6. A Key Judgment needs at least one supporting E-ID that is an observation or
+   a derived row. "Not collected" rows and F-graded analyst recall can be cited
+   as gaps, but never as the only support.
 
 ## Evidence that could not be collected
 

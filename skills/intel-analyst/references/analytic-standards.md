@@ -34,9 +34,23 @@ probability words, and do not invent intermediate terms.
 | very likely | 80–95% |
 | almost certain | 95–99% |
 
-A number may be added in parentheses when it was calculated, for example
-"likely (about 70%, from 7 of 10 reproduced runs)". Never state 0% or 100%: a
-certain fact is a Finding of Fact, not a judgment.
+A number may be added in parentheses only when it comes from a count or a
+calculation in the Evidence Log, for example "likely (7 of 10 reproduced runs,
+E9)". Do not add an estimated percentage ("about 60%"): the scale term already
+states the range. Never state 0% or 100%: a certain fact is a Finding of Fact,
+not a judgment.
+
+## The BLUF
+
+The BLUF contains no judgment of its own. Every judgment in it is one of the
+Key Judgments or Conclusions, with the same scale term and confidence.
+
+Risk-level adjectives — "low risk", "moderate risk", "high risk", "overall
+risk is high" — are not probability terms. They mix likelihood and impact.
+Do not use them in the BLUF, Key Judgments, or Conclusions. State the
+likelihood with a scale term and the impact separately: "It is *likely*
+(moderate confidence) that the upgrade breaks at least one dependency; the
+impact is Medium." Impact levels belong in the Threat/Risk Register.
 
 ## Confidence
 

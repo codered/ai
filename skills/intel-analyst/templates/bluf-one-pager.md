@@ -12,8 +12,8 @@
 
 **Action needed:** <the decision or action, who takes it, by when, what it costs>
 
-**Confidence and gaps:** <one line — overall confidence and the gap most likely
-to change the answer>
+**Confidence and gaps:** <one line — overall confidence and the gap that
+would change the answer most>
 
 Full product: [<title>](./YYYY-MM-DD-<slug>.md)
 

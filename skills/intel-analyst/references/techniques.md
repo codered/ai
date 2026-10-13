@@ -37,6 +37,10 @@ one with the most consistent items.
    discriminate. Keep them in the Evidence Log.
 5. Count **I** per hypothesis. Weight an **I** from an A/B-graded source more
    than one from a D–F source. Rank hypotheses by fewest inconsistent items.
+   Before ranking, count the diagnostic rows (C or I) for each hypothesis. A
+   hypothesis with far fewer diagnostic rows than the others is *untested*,
+   not winning: collect evidence on it, or mark it "insufficiently tested" in
+   the matrix and do not rank it first.
 6. Check sensitivity: which few evidence items decide the ranking? If one of
    them is wrong or misread, would the ranking change? Name them.
 7. Report every hypothesis, not just the winner, and say why each loser lost.
@@ -128,7 +132,9 @@ draft before the reader does.
 2. the hypotheses or options, including the ones that lost,
 3. the Evidence Log and Key Assumptions.
 
-Ask it to attack the judgments, not the format. Then fold its output back:
+Invoking the skill loads its method. Apply it to the draft as a separate
+pass — switch from author to critic — and write its structured findings.
+Attack the judgments, not the format. Then fold the findings back:
 
 - If a challenge breaks a judgment, revise the judgment.
 - If a challenge weakens a judgment, lower its confidence or probability.
@@ -136,7 +142,7 @@ Ask it to attack the judgments, not the format. Then fold its output back:
 - Note every change in Alternative Views / Red Team: "Red Team argued X;
   confidence on KJ2 lowered from moderate to low."
 
-**Quick mode, or fallback when `codered:devils-advocate` is unavailable:**
+**Quick mode, or fallback when `codered:devils-advocate` is not installed:**
 write the three strongest counter-arguments inline in Alternative Views, each
 with the evidence that answers it or an admission that it is not answered.
 When it is a fallback, state it: "Red Team: inline fallback
