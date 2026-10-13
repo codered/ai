@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/codered/ai/stargazers"><img src="https://img.shields.io/github/stars/codered/ai?style=flat-square&color=yellow" alt="Stars"></a>
   <a href="https://github.com/codered/ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-17-brightgreen?style=flat-square" alt="Skills"></a>
+  <a href="https://github.com/codered/ai/tree/main/skills"><img src="https://img.shields.io/badge/skills-18-brightgreen?style=flat-square" alt="Skills"></a>
   <img src="https://img.shields.io/badge/agents-Claude%20%C2%B7%20Cursor%20%C2%B7%20Copilot%20%C2%B7%20Gemini-lightgrey?style=flat-square" alt="Agent support">
 </p>
 
@@ -297,6 +297,19 @@ Before handing a plan over, the planner runs it: the bundled `simulate_plan.py` 
 | **Output** | A plan in the step contract, simulated to `0 problem(s)` before handover |
 | **Checks** | Exact expected output after every step · red before green · a final gate with one line per requirement |
 | **Scope** | Plans and verifies — the worker executes |
+
+### 🧾 [Taskfile Planning](skills/taskfile-planning/)
+
+Writes and runs a `Taskfile.ste`: a line-oriented, Dockerfile-style plan for LLM work. One GLOBAL block fixes the environment, permissions, tools, and the steps every task follows. TASK blocks declare their files, checks, and dependencies, so independent tasks run in parallel waves. Every instruction is written in Simplified Technical English, so a subagent reads exactly one meaning.
+
+A bundled standard-library linter makes the format strict: structure, dependency cycles, permission narrowing, file overlap between parallel tasks, and countable STE rules, each with an exact error code and line. In Run mode, the orchestrator gives each task its own git worktree and branch, then audits the changed files, runs the task's checks itself, and merges with `--no-ff` into an integration branch. A failed task keeps its worktree for inspection, and its dependents are marked `blocked BY` it.
+
+| | |
+|---|---|
+| **Trigger** | "write a taskfile" · "plan this as a Taskfile.ste" · "run Taskfile.ste" |
+| **Output** | A `Taskfile.ste` that lints clean, then an integration branch with one merge per successful task |
+| **Checks** | `ste_lint.py` before every run · file audit, isolated checks, and post-merge checks for every task |
+| **Scope** | Plans and orchestrates. It never merges into your branch; you decide that |
 
 ### 🕵️ [Intel Analyst](skills/intel-analyst/)
 
