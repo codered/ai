@@ -7,7 +7,8 @@ Exit 0: the file is valid. Exit 1: errors, one per line as FILE:LINE: CODE messa
 Exit 2: usage or IO error. Standard library only.
 
 --audit TASK_ID reads changed paths from stdin, one per line, and prints each path
-that the task's FILES do not match. It exits 1 when it prints a path. It exits 2, with
+that the task's FILES do not match or that a DENY write glob matches (GLOBAL or the
+task's own). It exits 1 when it prints a path. It exits 2, with
 the lint errors on stderr, when FILE is invalid or TASK_ID is unknown.
 """
 import argparse
@@ -691,13 +692,16 @@ def to_json(model):
 
 
 def audit(model, task_id, paths):
-    """Print each path outside the task's FILES. Return the exit code."""
+    """Print each path outside the task's FILES or under a DENY write. Return the exit code."""
     task = next((t for t in model.tasks if t.id == task_id), None)
     if task is None:
         print(f"no task {task_id}", file=sys.stderr)
         return 2
     patterns = [glob_regex(glob) for glob, _ in task.files]
-    outside = [p for p in (p.strip() for p in paths) if p and not any(r.match(p) for r in patterns)]
+    denied = [glob_regex(glob) for action, globs, _ in model.global_block.deny + task.deny
+              if action == "write" for glob in globs]
+    outside = [p for p in (p.strip() for p in paths)
+               if p and (not any(r.match(p) for r in patterns) or any(r.match(p) for r in denied))]
     for path in outside:
         print(path)
     return 1 if outside else 0
@@ -713,7 +717,7 @@ def main(argv=None):
                       help="print each path from stdin that the task's FILES do not match")
     args = parser.parse_args(argv)
     try:
-        with open(args.file, encoding="utf-8") as handle:
+        with open(args.file, encoding="utf-8-sig") as handle:
             source = handle.read()
     except (OSError, UnicodeDecodeError) as exc:
         print(f"{args.file}: {exc}", file=sys.stderr)

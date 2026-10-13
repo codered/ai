@@ -348,6 +348,37 @@ class AuditTest(unittest.TestCase):
     def test_empty_diff_passes(self):
         self.assertEqual(self.audit("schema", ""), (0, ""))
 
+    def run_audit(self, source, task_id, paths):
+        model, errors = ste_lint.lint(source)
+        self.assertEqual(errors, [])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = ste_lint.audit(model, task_id, paths)
+        return code, out.getvalue()
+
+    def test_path_under_global_deny_write_is_printed(self):
+        source = BASE.replace("  PERMIT run pytest", "  PERMIT run pytest\n  DENY write src/secret/**") \
+                     .replace("FILES src/one.py", "FILES src/**")
+        self.assertEqual(self.run_audit(source, "one", ["src/one.py", "src/secret/key.txt"]),
+                         (1, "src/secret/key.txt\n"))
+
+    def test_path_under_task_deny_write_is_printed(self):
+        source = BASE.replace("FILES src/one.py", "FILES src/**\n  DENY write src/gen/**")
+        self.assertEqual(self.run_audit(source, "one", ["src/a.py", "src/gen/b.py"]),
+                         (1, "src/gen/b.py\n"))
+
+    def test_path_inside_files_and_not_denied_passes(self):
+        source = BASE.replace("  PERMIT run pytest", "  PERMIT run pytest\n  DENY write src/secret/**")
+        self.assertEqual(self.run_audit(source, "one", ["src/one.py"]), (0, ""))
+
+    def test_bom_file_lints(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "bom.ste")
+            with open(path, "w", encoding="utf-8-sig") as handle:
+                handle.write(BASE)
+            proc = subprocess.run([sys.executable, TOOL, path], capture_output=True, text=True)
+        self.assertEqual((proc.returncode, proc.stdout), (0, ""))
+
     def test_unknown_task_exits_2(self):
         self.assertEqual(self.audit("nope", "")[0], 2)
 
