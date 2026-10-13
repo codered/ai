@@ -65,5 +65,41 @@ class SourcingTest(unittest.TestCase):
         self.assertIn("two independent sources", self.text)
 
 
+class TechniquesTest(unittest.TestCase):
+    def setUp(self):
+        self.text = read("references/techniques.md")
+
+    def test_all_techniques_have_sections(self):
+        for name in ("Analysis of Competing Hypotheses", "Key Assumptions Check",
+                     "Indicators / Signposts", "High-Impact / Low-Probability",
+                     "What If? Analysis", "Red Team"):
+            self.assertRegex(self.text, re.compile(rf"^## {re.escape(name)}", re.M))
+
+    def test_red_team_delegates_to_devils_advocate(self):
+        self.assertIn("codered:devils-advocate", self.text)
+
+    def test_ach_seeks_disconfirmation(self):
+        self.assertIn("inconsistent", self.text.lower())
+        self.assertIn("disconfirm", self.text.lower())
+
+    def test_mode_table_present(self):
+        self.assertRegex(self.text, r"\|\s*Technique\s*\|\s*Quick mode\s*\|\s*Rigorous mode\s*\|")
+
+
+class TailoringTest(unittest.TestCase):
+    def setUp(self):
+        self.text = read("references/tailoring.md")
+
+    def test_profiles(self):
+        for profile in ("leadership", "engineers", "self"):
+            self.assertIn(f"`{profile}`", self.text)
+
+    def test_no_new_judgments_rule(self):
+        self.assertIn("never add a judgment", self.text)
+
+    def test_links_back_rule(self):
+        self.assertIn("links to the full product", self.text)
+
+
 if __name__ == "__main__":
     unittest.main()
