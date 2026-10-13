@@ -26,6 +26,11 @@ CODES = {
     "G003": "${id.key} names an OUTPUT the task does not declare",
     "G004": "dependency cycle",
     "G005": "FILES overlap within a wave",
+    "P001": "task PERMIT is not inside a GLOBAL PERMIT",
+    "P002": "FILES glob is not inside the write PERMIT",
+    "P003": "PERMIT or FILES glob is forbidden by a DENY",
+    "P004": "PERMIT spawn is not allowed",
+    "P005": "VERIFY command is not inside PERMIT run",
 }
 
 ID_RE = re.compile(r"[a-z][a-z0-9-]*\Z")
@@ -395,7 +400,88 @@ def check_graph(model):
                                               f"of task {first.id} in wave {number}")
 
 
-SEMANTIC_CHECKS = [check_graph]
+def glob_contains(outer, inner):
+    """True when outer matches every path inner matches. None when it cannot decide."""
+    if outer == inner:
+        return True
+    if not has_wild(inner):
+        return bool(glob_regex(outer).match(inner))
+    if not has_wild(outer):
+        return False
+    prefix = literal_prefix(outer)
+    if outer[len(prefix):] == "**" and (prefix == "" or prefix.endswith("/")):
+        return inner.startswith(prefix)
+    return None
+
+
+def inside(glob, outers):
+    results = [glob_contains(outer, glob) for outer in outers]
+    if True in results:
+        return True
+    return None if None in results else False
+
+
+def group(entries):
+    """Map each action to its globs, from (action, globs, line) entries."""
+    out = {}
+    for action, globs, _ in entries:
+        out.setdefault(action, []).extend(globs)
+    return out
+
+
+def check_permissions(model):
+    err = model.err
+    g = model.global_block
+    global_permit, global_deny = group(g.permit), group(g.deny)
+
+    def check_deny(permits, denies):
+        for action, globs, line in permits:
+            for glob in globs:
+                for deny in denies.get(action, []):
+                    if action != "spawn" and glob_contains(deny, glob) is True:
+                        err(line, "P003", f"PERMIT {action} {glob} is forbidden by DENY {action} {deny}")
+                        break
+
+    for action, _, line in g.permit:
+        if action == "spawn":
+            err(line, "P004", "PERMIT spawn is not allowed; tasks never start agents")
+    check_deny(g.permit, global_deny)
+    for t in model.tasks:
+        denies = group(g.deny + t.deny)
+        for action, globs, line in t.permit:
+            if action == "spawn":
+                err(line, "P004", "PERMIT spawn is not allowed; tasks never start agents")
+                continue
+            for glob in globs:
+                result = inside(glob, global_permit.get(action, []))
+                if result is False:
+                    err(line, "P001", f"PERMIT {action} {glob} is not inside a GLOBAL PERMIT {action}")
+                elif result is None:
+                    err(line, "P001", f"cannot decide whether PERMIT {action} {glob} "
+                                      f"is inside a GLOBAL PERMIT {action}")
+        check_deny(t.permit, denies)
+        task_permit = group(t.permit)
+        writes = task_permit.get("write") or global_permit.get("write", [])
+        runs = task_permit.get("run") or global_permit.get("run", [])
+        for glob, line in t.files:
+            result = inside(glob, writes)
+            if result is False:
+                err(line, "P002", f"FILES {glob} is not inside PERMIT write")
+            elif result is None:
+                err(line, "P002", f"cannot decide whether FILES {glob} is inside PERMIT write")
+            for deny in denies.get("write", []):
+                if glob_contains(deny, glob) is True:
+                    err(line, "P003", f"FILES {glob} is forbidden by DENY write {deny}")
+                    break
+        for command, line in t.verify:
+            program = command.split()[0]
+            if inside(program, runs) is not True:
+                err(line, "P005", f"VERIFY command {program} is not inside PERMIT run")
+            elif any(glob_contains(deny, program) is True for deny in denies.get("run", [])):
+                err(line, "P005", f"VERIFY command {program} is forbidden by DENY run")
+
+
+SEMANTIC_CHECKS = [check_graph, check_permissions]
 
 
 def lint(source):

@@ -174,5 +174,41 @@ class GraphTest(LintCase):
         self.assertEqual((code, out), (0, "wave 1: schema\nwave 2: endpoint\n"))
 
 
+class PermissionTest(LintCase):
+    def test_p001_permit_not_narrower(self):
+        self.assert_fixture("p001-permit-not-narrower.ste",
+                            ["13: P001 PERMIT write docs/** is not inside a GLOBAL PERMIT write"])
+
+    def test_p002_files_outside_write(self):
+        self.assert_fixture("p002-files-outside-write.ste",
+                            ["14: P002 FILES docs/one.md is not inside PERMIT write"])
+
+    def test_p002_cannot_decide(self):
+        source = BASE.replace("PERMIT write src/** tests/**", "PERMIT write src/*.py tests/**") \
+                     .replace("FILES src/one.py", "FILES src/o*.py")
+        self.assertEqual(errors(source),
+                         ["14: P002 cannot decide whether FILES src/o*.py is inside PERMIT write"])
+
+    def test_p003_permit_denied(self):
+        self.assert_fixture("p003-permit-denied.ste",
+                            ["6: P003 PERMIT write tests/** is forbidden by DENY write tests/**"])
+
+    def test_p004_permit_spawn(self):
+        self.assert_fixture("p004-permit-spawn.ste",
+                            ["8: P004 PERMIT spawn is not allowed; tasks never start agents"])
+
+    def test_p005_verify_not_permitted(self):
+        self.assert_fixture("p005-verify-not-permitted.ste",
+                            ["15: P005 VERIFY command make is not inside PERMIT run"])
+
+    def test_deny_inside_a_permit_is_valid(self):
+        source = BASE.replace("  TOOL edit", "  DENY write src/secrets/**\n  TOOL edit")
+        self.assertEqual(errors(source), [])
+
+    def test_files_under_a_deny_fail(self):
+        source = BASE.replace("  TOOL edit", "  DENY write src/one.py\n  TOOL edit")
+        self.assertEqual(errors(source), ["15: P003 FILES src/one.py is forbidden by DENY write src/one.py"])
+
+
 if __name__ == "__main__":
     unittest.main()
