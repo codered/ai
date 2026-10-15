@@ -16,7 +16,7 @@ import json
 import re
 import sys
 
-# STE rules: the countable subset of skills/nfc/references/style-rules.md.
+# STE rules: the countable subset of the codered:nfc skill's style rules.
 MAX_WORDS = 20
 REPLACE = [  # (rejected forms, approved word)
     (("ensure", "ensures", "ensured"), "make sure"),

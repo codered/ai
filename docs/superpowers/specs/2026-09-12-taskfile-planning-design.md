@@ -351,5 +351,6 @@ the file.
 - A `TOOL setup <command>` role, placed in FLOW before `verify`, prepares a fresh worktree.
   The orchestrator runs it before VERIFY in a task or integration worktree.
 - On resume, the orchestrator aborts a merge in progress in the integration worktree. For
-  an `in_progress` task whose branch is already an ancestor of the integration branch, it
-  runs VERIFY there instead of resetting the task.
+  an `in_progress` task whose merge commit (`taskfile(<plan>): merge <id>`) is on the
+  integration branch, it runs VERIFY there instead of resetting the task. An ancestor
+  check is not used, because a task branch with no commits is also an ancestor.

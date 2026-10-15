@@ -104,14 +104,18 @@ picks its own paths or cleans up by itself, because the plan must control the na
      succeeds, run `git -C INT merge --abort`. If `git -C INT status --porcelain` is not
      empty, run `git -C INT reset --hard` and `git -C INT clean -fd`. `INT` is the integration
      worktree, your own tree, so this is safe.
-3. **Reset interrupted tasks.** For each task in `in_progress`, first run
-   `git merge-base --is-ancestor <branch> <integration-branch>`.
-   - If it succeeds, the merge already happened. Run the `setup` command (see "Audit and
-     merge" step 3), then each VERIFY command, in `INT`. On exit 0, write
-     `completed_success` and remove the task worktree if it exists. Otherwise write
-     `completed_failure BECAUSE VERIFY failed after merge` and tell the user that the
-     merge is on the integration branch.
-   - If it fails, do the following:
+3. **Reset interrupted tasks.** For each task in `in_progress`, first check for its merge
+   commit:
+   `git -C INT log --merges --format=%s | grep -Fx "taskfile(<plan>): merge <id>"`.
+   Do not use `git merge-base --is-ancestor`: a task branch with no commits is also an
+   ancestor of the integration branch.
+   - If grep finds the line, the merge already happened. Run the `setup` command (see
+     "Audit and merge" step 3), then each VERIFY command, in `INT`. On exit 0, run
+     `git -C INT reset --hard` and `git -C INT clean -fd`, write `completed_success`, and
+     run `git worktree remove --force <worktree>` if the task worktree exists. Otherwise
+     write `completed_failure BECAUSE VERIFY failed after merge` and tell the user that
+     the merge is on the integration branch.
+   - If grep finds nothing, do the following:
      - If its worktree exists and `git -C <worktree> status --porcelain` is not empty,
        run `git -C <worktree> add -A` and commit as `<id>: uncommitted changes at interrupt`.
      - If its worktree exists, run `git worktree remove --force <worktree>`.
