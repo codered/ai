@@ -1,0 +1,36 @@
+PLAN three-waves 1
+
+GLOBAL
+  AGENTS max 2
+  PERMIT read **
+  PERMIT write src/** tests/**
+  PERMIT run pytest
+  TOOL edit hashline
+  FLOW read -> edit -> verify -> report
+END
+
+TASK model
+  GOAL Add the data model.
+  FILES src/model.py
+  OUTPUT class = Record
+  VERIFY pytest tests/test_model.py
+END
+
+TASK docs
+  GOAL Add the module docstrings.
+  FILES src/docs.py
+  VERIFY pytest tests/test_docs.py
+END
+
+TASK store
+  GOAL Save each ${model.class} to disk.
+  FILES src/store.py
+  VERIFY pytest tests/test_store.py
+END
+
+TASK api
+  DEPENDS store
+  GOAL Add the read endpoint.
+  FILES src/api.py
+  VERIFY pytest tests/test_api.py
+END

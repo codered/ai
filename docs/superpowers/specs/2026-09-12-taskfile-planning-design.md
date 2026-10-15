@@ -248,9 +248,10 @@ each task's work separately, and no work is lost.
 | Item | Value |
 |---|---|
 | Base branch | The branch checked out when the run starts |
-| Integration branch | `taskfile/<plan-name>`, created from the base branch on the first run and reused on later runs |
-| Task branch | `taskfile/<plan-name>/<task-id>` |
-| Task worktree | `<WORKTREES>/<plan-name>/<task-id>` |
+| Integration branch | `taskfile/<plan-name>/integration`, created from the base branch on the first run and reused on later runs |
+| Integration worktree | `<WORKTREES>/<plan-name>/integration`. The orchestrator merges, verifies, and resets here. |
+| Task branch | `taskfile/<plan-name>/tasks/<task-id>` |
+| Task worktree | `<WORKTREES>/<plan-name>/tasks/<task-id>` |
 | Taskfile | Stays in the main working tree. The orchestrator edits it there and does not commit STATUS changes. |
 
 - The orchestrator creates worktrees with `git worktree add`. It does not use a harness
@@ -324,3 +325,32 @@ the file.
 - Worktree model: a scenario run in a scratch repository with two parallel tasks and one
   dependent task. Check the branch names, one `--no-ff` merge per successful task, that a
   failed task keeps its worktree, and that a deliberate out-of-FILES edit fails the audit.
+
+## Amendments (implementation plan, 2026-10-13)
+
+- Git cannot hold `taskfile/<plan>` and `taskfile/<plan>/<id>` at once, so the branches are
+  `taskfile/<plan>/integration` and `taskfile/<plan>/tasks/<id>`.
+- Merges, post-merge VERIFY, and resets happen in an integration worktree. A reset in the
+  main working tree would discard the Taskfile's uncommitted STATUS lines.
+- The STE word checks skip UPPERCASE words, so `BECAUSE VERIFY failed after merge` is valid.
+- `ste_lint.py --audit TASK_ID` reads changed paths on stdin and prints each path outside
+  FILES. The attribution step uses it.
+- An interrupted task's uncommitted changes are committed before its worktree is removed.
+- A re-run skips `completed_failure` tasks as well as `completed_success` ones. SKILL.md
+  gives the manual procedure to retry a failed task.
+- The FLOW contract lets a subagent that cannot send messages during its run put its
+  heartbeats in its report.
+- A dependency is allowed when two tasks must change the same file.
+- `--audit` exits 2 with errors on stderr for an invalid plan or an unknown task.
+- `--audit` also reports paths under DENY write, GLOBAL or the task's own.
+- Blocked tasks are never dispatched.
+- WORKTREES is GLOBAL-only.
+- COMPACT pct is 1..99.
+- The attribution command is rename-safe:
+  `git -c core.quotepath=off diff --no-renames --name-only <merge-base>..<branch>`.
+- A `TOOL setup <command>` role, placed in FLOW before `verify`, prepares a fresh worktree.
+  The orchestrator runs it before VERIFY in a task or integration worktree.
+- On resume, the orchestrator aborts a merge in progress in the integration worktree. For
+  an `in_progress` task whose merge commit (`taskfile(<plan>): merge <id>`) is on the
+  integration branch, it runs VERIFY there instead of resetting the task. An ancestor
+  check is not used, because a task branch with no commits is also an ancestor.

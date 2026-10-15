@@ -1,0 +1,49 @@
+PLAN interrupted 1
+
+GLOBAL
+  AGENTS max 2
+  PERMIT read **
+  PERMIT write src/** tests/**
+  PERMIT run pytest
+  TOOL edit hashline
+  FLOW read -> edit -> verify -> report
+END
+
+TASK model
+  GOAL Add the data model.
+  FILES src/model.py
+  VERIFY pytest tests/test_model.py
+  STATUS completed_success
+END
+
+TASK store
+  DEPENDS model
+  GOAL Add the storage layer.
+  FILES src/store.py
+  VERIFY pytest tests/test_store.py
+  STATUS completed_failure BECAUSE VERIFY failed after merge.
+END
+
+TASK api
+  DEPENDS store
+  GOAL Add the read endpoint.
+  FILES src/api.py
+  VERIFY pytest tests/test_api.py
+  STATUS blocked BY store
+END
+
+TASK client
+  DEPENDS api
+  GOAL Add the client.
+  FILES src/client.py
+  VERIFY pytest tests/test_client.py
+  STATUS blocked BY api
+END
+
+TASK cli
+  DEPENDS model
+  GOAL Add the command line.
+  FILES src/cli.py
+  VERIFY pytest tests/test_cli.py
+  STATUS in_progress
+END

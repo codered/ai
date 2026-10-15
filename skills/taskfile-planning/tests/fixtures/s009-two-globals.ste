@@ -1,0 +1,25 @@
+PLAN demo 1
+
+GLOBAL
+  AGENTS max 2
+  PERMIT read **
+  PERMIT write src/** tests/**
+  PERMIT run pytest
+  TOOL edit hashline
+  FLOW read -> edit -> verify -> report
+END
+
+GLOBAL
+  AGENTS max 2
+  PERMIT read **
+  PERMIT write src/** tests/**
+  PERMIT run pytest
+  TOOL edit hashline
+  FLOW read -> edit -> verify -> report
+END
+
+TASK one
+  GOAL Add the module.
+  FILES src/one.py
+  VERIFY pytest tests/test_one.py
+END
